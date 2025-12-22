@@ -1,0 +1,4 @@
+C:/Users/shaka/Downloads/UbisoftTorontoAPI_DEC102025Update/build/win64/CMakeFiles/ContestAPI.dir
+C:/Users/shaka/Downloads/UbisoftTorontoAPI_DEC102025Update/build/win64/CMakeFiles/Game.dir
+C:/Users/shaka/Downloads/UbisoftTorontoAPI_DEC102025Update/build/win64/CMakeFiles/ALL_BUILD.dir
+C:/Users/shaka/Downloads/UbisoftTorontoAPI_DEC102025Update/build/win64/CMakeFiles/ZERO_CHECK.dir

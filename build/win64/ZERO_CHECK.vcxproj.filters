@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\build\win64\CMakeFiles\b81a8309b1fcab3a567250b2b429962e\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{5DB2ABA0-EBCF-383F-9AD2-CC8DCB27E0DD}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
