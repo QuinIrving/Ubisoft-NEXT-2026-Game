@@ -46,8 +46,8 @@ public:
 	Vec3<T>& operator/=(const Vec3<T>& rhs);
 
 	// Quaternion multiplication
-	//Vec3<T> operator*(const Quaternion& q) const;
-	//Vec3<T>& operator*=(const Quaternion& q);
+	Vec3<T> operator*(const Quaternion& q) const;
+	Vec3<T>& operator*=(const Quaternion& q);
 
 	// Scalar power
 	Vec3<T> operator^(const T scalar) const;
@@ -67,6 +67,8 @@ public:
 	Vec3<T>& Normalize();
 	T GetMagnitude() const;
 	T GetMagnitudeSquared() const;
+
+	void Print() const;
 };
 
 template <typename T>
@@ -237,6 +239,25 @@ inline constexpr T Vec3<T>::DotProduct(const Vec3<T>& lhs, const Vec3<T>& rhs) {
 }
 
 template <typename T>
+constexpr Vec3<T> Vec3<T>::CrossProduct(const Vec3<T>& rhs) const {
+	// positive orientation a.k.a right handed system
+	T newX = (y * rhs.z) - (z * rhs.y);
+	T newY = (z * rhs.x) - (x * rhs.z);
+	T newZ = (x * rhs.y) - (y * rhs.x);
+
+	return Vec3<T>(newX, newY, newZ);
+}
+
+template<typename T>
+inline constexpr Vec3<T> Vec3<T>::CrossProduct(const Vec3<T>& lhs, const Vec3<T>& rhs) {
+	T newX = (lhs.y * rhs.z) - (lhs.z * rhs.y);
+	T newY = (lhs.z * rhs.x) - (lhs.x * rhs.z);
+	T newZ = (lhs.x * rhs.y) - (lhs.y * rhs.x);
+
+	return Vec3<T>(newX, newY, newZ);
+}
+
+template <typename T>
 Vec3<T> Vec3<T>::GetNormalized() const {
 	T mag = this->GetMagnitude();
 
@@ -270,4 +291,11 @@ T Vec3<T>::GetMagnitude() const {
 template <typename T>
 T Vec3<T>::GetMagnitudeSquared() const {
 	return x * x + y * y + z * z;
+}
+
+template <typename T>
+void Vec3<T>::Print() const {
+	char buffer[128];
+	std::snprintf(buffer, sizeof(buffer), "[ %.2f, %.2f, %.2f ]\n", x, y, z);
+	OutputDebugString(buffer);
 }

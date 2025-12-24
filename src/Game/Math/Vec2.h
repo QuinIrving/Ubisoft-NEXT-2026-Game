@@ -43,6 +43,8 @@ public:
 	Vec2<T> GetNormalized() const;
 	T GetMagnitude() const;
 	T GetMagnitudeSquared() const;
+
+	void Print() const;
 };
 
 template <typename T>
@@ -172,4 +174,11 @@ T Vec2<T>::GetMagnitude() const {
 template <typename T>
 T Vec2<T>::GetMagnitudeSquared() const {
 	return x * x + y * y;
+}
+
+template <typename T>
+void Vec2<T>::Print() const {
+	char buffer[128];
+	std::snprintf(buffer, sizeof(buffer), "[ %.2f, %.2f ]\n", x, y);
+	OutputDebugString(buffer);
 }

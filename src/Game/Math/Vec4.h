@@ -4,6 +4,8 @@
 #include "Vec3.h"
 #include "Mat4.h"
 
+#include <Windows.h>
+
 class Quaternion;
 
 template <typename T>
@@ -38,12 +40,12 @@ public:
 	const T& operator[](int col) const;
 
 	// Matrix multiplication
-	//Vec4<T> operator*(const Mat4<T>& rhs) const;
-	//Vec4<T>& operator*=(const Mat4<T>& rhs);
+	Vec4<T> operator*(const Mat4<T>& rhs) const;
+	Vec4<T>& operator*=(const Mat4<T>& rhs);
 
 	// Quaternion multiplication
-	//Vec4<T> operator*(const Quaternion& q) const;
-	//Vec4<T>& operator*=(const Quaternion& q);
+	Vec4<T> operator*(const Quaternion& q) const;
+	Vec4<T>& operator*=(const Quaternion& q);
 
 	// Scalar power
 	Vec4<T> operator^(const T scalar) const;
@@ -59,6 +61,8 @@ public:
 	Vec4<T> GetNormalized() const;
 	T GetMagnitude() const;
 	T GetMagnitudeSquared() const;
+
+	void Print() const;
 };
 
 template <typename T>
@@ -200,10 +204,17 @@ Vec4<T> Vec4<T>::GetNormalized() const {
 
 template <typename T>
 T Vec4<T>::GetMagnitude() const {
-	return std::hypot(x, y, z, w);
+	return std::sqrt(x * x + y * y + z * z + w * w);
 }
 
 template <typename T>
 T Vec4<T>::GetMagnitudeSquared() const {
 	return x * x + y * y + z * z + w * w;
+}
+
+template <typename T>
+void Vec4<T>::Print() const {
+	char buffer[128];
+	std::snprintf(buffer, sizeof(buffer), "[ %.2f, %.2f, %.2f, %.2f ]\n", x, y, z, w);
+	OutputDebugString(buffer);
 }

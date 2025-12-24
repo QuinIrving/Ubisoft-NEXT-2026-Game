@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include "Vec3.h"
 
 template <typename T>
@@ -11,15 +12,15 @@ public:
 	const Vec4<T>& operator[](int row) const;
 
 public:
-	constexpr Mat4() : data(Mat4<T>::GetIdentity()) {};
+	constexpr Mat4() : m_data(Mat4<T>::GetIdentity().m_data) {};
 	constexpr Mat4(T matrix[16]);
 	constexpr Mat4(std::array<T, 16> matrix);
-	constexpr Mat4(std::array<Vec4<T>, 4> matrix) : data(matrix) {};
+	constexpr Mat4(std::array<Vec4<T>, 4> matrix) : m_data(matrix) {};
 
 	static constexpr Mat4<T> GetIdentity();
 	static constexpr Mat4<T> GetZero();
 
-	T& operator()(int row, int col) { return data[row][col]; }
+	T& operator()(int row, int col) { return m_data[row][col]; }
 
 	// matrix addition and multiplication
 	Mat4<T> operator+(const Mat4<T>& rhs) const;
@@ -39,8 +40,10 @@ public:
 	static Mat4<T> Rotate(Vec4<T> v);
 	static Mat4<T> Scale(Vec4<T> v);
 
+	void Print() const;
+
 private:
-	std::array<Vec4<T>, 4> data;
+	std::array<Vec4<T>, 4> m_data;
 };
 
 template <typename T>
@@ -49,7 +52,7 @@ Vec4<T>& Mat4<T>::operator[](int row) {
 		throw std::out_of_range("Attempted to access a Mat4 row outside of range");
 	}
 
-	return data[row];
+	return m_data[row];
 }
 
 template <typename T>
@@ -58,25 +61,25 @@ const Vec4<T>& Mat4<T>::operator[](int row) const {
 		throw std::out_of_range("Attempted to access a Mat4 row outside of range");
 	}
 
-	return data[row];
+	return m_data[row];
 }
 
 template <typename T>
 constexpr Mat4<T>::Mat4(T matrix[16]) {
 	for (int i = 0; i < 16; i += 4) {
-		data[(int)(i / 4)] = Vec4<T>(matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
+		m_data[(int)(i / 4)] = Vec4<T>(matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
 	}
 }
 
 template <typename T>
 constexpr Mat4<T>::Mat4(std::array<T, 16> matrix) {
 	for (int i = 0; i < 16; i += 4) {
-		data[(int)(i / 4)] = Vec4<T>(matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
+		m_data[(int)(i / 4)] = Vec4<T>(matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
 	}
 }
 
 template <typename T>
-static constexpr Mat4<T>::Mat4<T> GetIdentity() {
+constexpr Mat4<T> Mat4<T>::GetIdentity() {
 	std::array<Vec4<T>, 4> arr;
 
 	arr[0] = Vec4<T>(T(1), T(0), T(0), T(0));
@@ -88,7 +91,7 @@ static constexpr Mat4<T>::Mat4<T> GetIdentity() {
 }
 
 template <typename T>
-static constexpr Mat4<T>::Mat4<T> GetZero() {
+constexpr Mat4<T> Mat4<T>::GetZero() {
 	std::array<Vec4<T>, 4> arr;
 
 	arr[0] = Vec4<T>(T(0), T(0), T(0), T(0));
@@ -101,47 +104,37 @@ static constexpr Mat4<T>::Mat4<T> GetZero() {
 
 template <typename T>
 Mat4<T> Mat4<T>::operator+(const Mat4<T>& rhs) const {
-	T addedData[16];
-	for (int i = 0; i < 16; ++i) {
-		addedData[i] = data[i] + rhs.data[i];
+	std::array<Vec4<T>,4> arr;
+	for (int i = 0; i < 4; ++i) {
+		arr[i] = m_data[i] + rhs.m_data[i];
 	}
 
-	return Mat4(addedData);
+	return Mat4(arr);
 }
 
 template <typename T>
 Mat4<T>& Mat4<T>::operator+=(const Mat4<T>& rhs) {
-	for (int i = 0; i < 16; ++i) {
-		data[i] += rhs.data[i];
+	for (int i = 0; i < 4; ++i) {
+		m_data[i] += rhs.m_data[i];
 	}
 
-	return *this;
-}
-
-template <typename T>
-Mat4<T> Mat4<T>::operator*(const Mat4<T>& rhs) const {
-
-}
-
-template <typename T>
-Mat4<T>& Mat4<T>::operator*=(const Mat4<T>& rhs) {
 	return *this;
 }
 
 template <typename T>
 Mat4<T> Mat4<T>::operator*(T factor) const {
-	T multipliedData[16];
-	for (int i = 0; i < 16; ++i) {
-		multipliedData[i] = data[i] * factor;
+	std::array<Vec4<T>, 4> arr;
+	for (int i = 0; i < 4; ++i) {
+		arr[i] = m_data[i] * factor;
 	}
 
-	return Mat4(multipliedData);
+	return Mat4(arr);
 }
 
 template <typename T>
 Mat4<T>& Mat4<T>::operator*=(T factor) {
-	for (int i = 0; i < 16; ++i) {
-		data[i] *= factor;
+	for (int i = 0; i < 4; ++i) {
+		m_data[i] *= factor;
 	}
 
 	return *this;
@@ -187,8 +180,8 @@ Mat4<T> Mat4<T>::GetNormalMatrix() const { // only requires getting the Mat3 top
 
 	// Transpose, only the 3x3 not the translation parts.
 	Mat4<T> normal;
-	for (int r = 0; r < 3; r++) {
-		for (int c = 0; c < 3; c++) {
+	for (int r = 0; r < 3; ++r) {
+		for (int c = 0; c < 3; ++c) {
 			normal[r][c] = inv[c][r];
 		}
 	}
@@ -201,9 +194,12 @@ Mat4<T> Mat4<T>::GetNormalMatrix() const { // only requires getting the Mat3 top
 
 template <typename T>
 std::array<Vec4<T>, 4> Mat4<T>::GetData() const {
-	return data;
+	return m_data;
 }
 
-//static Mat4<T> Translate(Vec4<T> v);
-//static Mat4<T> Rotate(Vec4<T> v);
-//static Mat4<T> Scale(Vec4<T> v);
+template <typename T>
+void Mat4<T>::Print() const {
+	for (int i = 0; i < 4; ++i) {
+		m_data[i].Print();
+	}
+}

@@ -15,11 +15,14 @@
 #include "../ContestAPI/app.h"
 //------------------------------------------------------------------------
 
+#include "Math/MatVecQuat_ops.h"
 #include "Math/Vec2.h"
 #include "Math/Vec3.h"
 #include "Math/Vec4.h"
 #include "Math/Quaternion.h"
 #include "Math/Mat4.h"
+
+
 
 //------------------------------------------------------------------------
 // Example data....
@@ -40,6 +43,9 @@ Vec4<float> t4;
 Quaternion q;
 Mat4<float> m;
 
+//m.Print();
+//q.Print();
+
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
@@ -47,6 +53,11 @@ Mat4<float> m;
 //------------------------------------------------------------------------
 void Init()
 {
+	t2.Print();
+	t3.Print();
+	t4.Print();
+	q.Print();
+	m.Print();
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
 	testSprite = App::CreateSprite("./data/TestData/Test.bmp", 8, 4);
