@@ -19,7 +19,7 @@ public:
 public:
 	constexpr Vec4() = default;
 	constexpr Vec4(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {};
-	constexpr Vec4(Vec3<T> v, T w = T(1)) : x(v.x), y(v.y), z(v.z), w(w) {};
+	constexpr Vec4(Vec3<T> v, T w = T(1)) : x(v.x), y(v.y), z(v.z), w(w) {}; // 0 for direction such as a normal, 1 for position included
 
 	Vec4<T> operator-() const; // negation
 
@@ -28,6 +28,9 @@ public:
 	Vec4<T>& operator+=(const Vec4<T>& rhs);
 	Vec4<T> operator-(const Vec4<T>& rhs) const;
 	Vec4<T>& operator-=(const Vec4<T>& rhs);
+
+	Vec4<T> operator*(const Vec4<T>& rhs) = delete;
+	Vec4<T>& operator*=(const Vec4<T>& rhs) = delete;
 
 	// Scalar multiplication
 	Vec4<T> operator*(const T scalar) const;
@@ -215,6 +218,6 @@ T Vec4<T>::GetMagnitudeSquared() const {
 template <typename T>
 void Vec4<T>::Print() const {
 	char buffer[128];
-	std::snprintf(buffer, sizeof(buffer), "[ %.2f, %.2f, %.2f, %.2f ]\n", x, y, z, w);
+	std::snprintf(buffer, sizeof(buffer), "[ %.3f, %.3f, %.3f, %.3f ]\n", x, y, z, w);
 	OutputDebugString(buffer);
 }

@@ -179,6 +179,6 @@ T Vec2<T>::GetMagnitudeSquared() const {
 template <typename T>
 void Vec2<T>::Print() const {
 	char buffer[128];
-	std::snprintf(buffer, sizeof(buffer), "[ %.2f, %.2f ]\n", x, y);
+	std::snprintf(buffer, sizeof(buffer), "[ %.3f, %.3f ]\n", x, y);
 	OutputDebugString(buffer);
 }

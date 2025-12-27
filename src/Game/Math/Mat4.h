@@ -155,6 +155,8 @@ Mat4<T> Mat4<T>::GetTranspose() const {
 template <typename T>
 Mat4<T> Mat4<T>::GetNormalMatrix() const { // only requires getting the Mat3 top left corner inverse, as the translations don't affect normals
 	// only the upper 3x3 matters as for a normal translation doesn't come into play, only the rotation and scaling.
+		
+	// inverse and transpose of top left 3x3 matrix.
 
 	T a = (*this)[0][0], b = (*this)[0][1], c = (*this)[0][2];
 	T d = (*this)[1][0], e = (*this)[1][1], f = (*this)[1][2];

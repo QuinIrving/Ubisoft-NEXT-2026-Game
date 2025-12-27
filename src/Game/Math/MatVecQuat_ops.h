@@ -1,9 +1,9 @@
 #pragma once
+#include "MathConstants.h"
 #include "Vec3.h"
 #include "Vec4.h"
 #include "Mat4.h"
 #include "Quaternion.h"
-#include "MathConstants.h"
 
 template <typename T>
 Vec4<T> Vec4<T>::operator*(const Mat4<T>& rhs) const {
@@ -72,56 +72,7 @@ inline Mat4<T> Mat4<T>::Translate(Vec4<T> v) {
 
 template <typename T>
 inline Mat4<T> Mat4<T>::Rotate(Vec4<T> v) {
-	Mat4<T> rotX, rotY, rotZ;
-
-	// transform to radians from degrees.
-	float rX = v.x * DEGREE_TO_RADIANS;
-	float rY = v.y * DEGREE_TO_RADIANS;
-	float rZ = v.z * DEGREE_TO_RADIANS;
-
-
-	// rot X
-	rotX[0][0] = 1;
-	rotX[0][1] = 0;
-	rotX[0][2] = 0;
-
-	rotX[1][0] = 0;
-	rotX[1][1] = cos(rX);
-	rotX[1][2] = -sin(rX);
-
-	rotX[2][0] = 0;
-	rotX[2][1] = sin(rX);
-	rotX[2][2] = cos(rX);
-
-
-	//Rot Y
-	rotY[0][0] = cos(rY);
-	rotY[0][1] = 0;
-	rotY[0][2] = -sin(rY);
-
-	rotY[1][0] = 0;
-	rotY[1][1] = 1;
-	rotY[1][2] = 0;
-
-	rotY[2][0] = sin(rY);
-	rotY[2][1] = 0;
-	rotY[2][2] = cos(rY);
-
-
-	// Rot Z
-	rotZ[0][0] = cos(rZ);
-	rotZ[0][1] = sin(rZ);
-	rotZ[0][2] = 0;
-
-	rotZ[1][0] = -sin(rZ);
-	rotZ[1][1] = cos(rZ);
-	rotZ[1][2] = 0;
-
-	rotZ[2][0] = 0;
-	rotZ[2][1] = 0;
-	rotZ[2][2] = 1;
-
-	return rotX * rotY * rotZ;
+	return Quaternion(v.x, v.y, v.z).GetRotationMatrix();
 }
 
 template <typename T>
@@ -130,26 +81,31 @@ inline Mat4<T> Mat4<T>::Scale(Vec4<T> v) {
 	m[0][0] = v.x;
 	m[1][1] = v.y;
 	m[2][2] = v.z;
+
 	return m;
 }
 
 
 template <typename T>
 inline Vec3<T> Vec3<T>::operator*(const Quaternion& q) const {
+	Quaternion qNormalized = Quaternion(q);
+	qNormalized.Normalize();
 	Vec4<T> v = *this;
 	v.w = 0;
 	Quaternion vQuat = Quaternion(v);
-	Quaternion result = q * vQuat * ~q;
+	Quaternion result = qNormalized * vQuat * (~qNormalized);
 	const Vec4<T>& delta = result.GetDelta();
 	return Vec3<T>(delta.x, delta.y, delta.z);
 }
 
 template <typename T>
 inline Vec3<T>& Vec3<T>::operator*=(const Quaternion& q) {
+	Quaternion qNormalized = Quaternion(q);
+	qNormalized.Normalize();
 	Vec4<T> v = *this;
 	v.w = 0;
 	Quaternion vQuat = Quaternion(v);
-	Quaternion result = q * vQuat * ~q;
+	Quaternion result = qNormalized * vQuat * (~qNormalized);
 	Vec4<T> d = result.GetDelta();
 
 	this->x = (T)d.x;
@@ -161,17 +117,21 @@ inline Vec3<T>& Vec3<T>::operator*=(const Quaternion& q) {
 
 template <typename T>
 inline Vec4<T> Vec4<T>::operator*(const Quaternion& q) const {
+	Quaternion qNormalized = Quaternion(q);
+	qNormalized.Normalize();
 	Quaternion vQuat = Quaternion(Vec4<T>(this->x, this->y, this->z, (T)0));
-	Quaternion result = q * vQuat * ~q;
+	Quaternion result = qNormalized * vQuat * (~qNormalized);
 	const Vec4<T>& delta = result.GetDelta();
 	return Vec4<T>(delta.x, delta.y, delta.z, 1.f);
 }
 
 template <typename T>
 inline Vec4<T>& Vec4<T>::operator*=(const Quaternion& q) {
+	Quaternion qNormalized = Quaternion(q);
+	qNormalized.Normalize();
 	Quaternion vQuat = Quaternion(Vec4<T>(this->x, this->y, this->z, (T)0));
 
-	Quaternion result = q * vQuat * ~q;
+	Quaternion result = qNormalized * vQuat * (~qNormalized);
 	Vec4<T> d = result.GetDelta();
 	this->x = (T)d.x;
 	this->y = (T)d.y;

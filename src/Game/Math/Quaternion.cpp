@@ -1,4 +1,5 @@
 #include "Quaternion.h"
+#include "MathConstants.h"
 
 // we distinguish our quaternion as x,y,z,w, but our w acts like the standard (even though it's at the bottom)
 Quaternion::Quaternion(const Vec3<float>& axis, float angle) { // axis angle
@@ -11,7 +12,11 @@ Quaternion::Quaternion(const Vec3<float>& axis, float angle) { // axis angle
 	m_delta.z = axisNormalized.z * s;
 	m_delta.w = cosf(angle * 0.5f);
 }
-Quaternion::Quaternion(float rotX, float rotY, float rotZ) { // euler angles
+Quaternion::Quaternion(float rotX, float rotY, float rotZ) { // euler angles -> ZYX convention -> Takes in Degrees
+	rotX *= DEGREE_TO_RADIANS;
+	rotY *= DEGREE_TO_RADIANS;
+	rotZ *= DEGREE_TO_RADIANS;
+
 	// q = qx * qy * qz.
 	// optimizing:
 	float halfX = rotX * 0.5f;
@@ -36,6 +41,7 @@ Quaternion::Quaternion(float rotX, float rotY, float rotZ) { // euler angles
 
 Quaternion::Quaternion(const Mat4<float>& rotMat) { // rot mat4
 	// bypass for now.
+	throw new std::runtime_error("Quaternion constructor given a mat4 rotation matrix is not yet implemented.\n");
 }
 
 Quaternion& Quaternion::operator=(const Quaternion& other) {
@@ -91,19 +97,22 @@ Quaternion& Quaternion::operator*=(const Quaternion& rhs) {
 }
 
 Mat4<float> Quaternion::GetRotationMatrix() const {
+	Quaternion normalized = Quaternion(*this).Normalize();
+	Vec4<float> delta = normalized.GetDelta();
+
 	Mat4<float> m = Mat4<float>::GetIdentity();
 
-	m[0][0] = 2 * (m_delta.w * m_delta.w + m_delta.x * m_delta.x) - 1;
-	m[0][1] = 2 * (m_delta.x * m_delta.y - m_delta.w * m_delta.z);
-	m[0][2] = 2 * (m_delta.x * m_delta.z + m_delta.w * m_delta.y);
+	m[0][0] = 2 * (delta.w * delta.w + delta.x * delta.x) - 1;
+	m[0][1] = 2 * (delta.x * delta.y - delta.w * delta.z);
+	m[0][2] = 2 * (delta.x * delta.z + delta.w * delta.y);
 
-	m[1][0] = 2 * (m_delta.x * m_delta.y + m_delta.w * m_delta.z);
-	m[1][1] = 2 * (m_delta.w * m_delta.w + m_delta.y * m_delta.y) - 1;
-	m[1][2] = 2 * (m_delta.y * m_delta.z - m_delta.w * m_delta.x);
+	m[1][0] = 2 * (delta.x * delta.y + delta.w * delta.z);
+	m[1][1] = 2 * (delta.w * delta.w + delta.y * delta.y) - 1;
+	m[1][2] = 2 * (delta.y * delta.z - delta.w * delta.x);
 
-	m[2][0] = 2 * (m_delta.x * m_delta.z - m_delta.w * m_delta.y);
-	m[2][1] = 2 * (m_delta.y * m_delta.z + m_delta.w * m_delta.x);
-	m[2][2] = 2 * (m_delta.w * m_delta.w + m_delta.z * m_delta.z) - 1;
+	m[2][0] = 2 * (delta.x * delta.z - delta.w * delta.y);
+	m[2][1] = 2 * (delta.y * delta.z + delta.w * delta.x);
+	m[2][2] = 2 * (delta.w * delta.w + delta.z * delta.z) - 1;
 
 	/*
 	float x = m_delta.x, y = m_delta.y, z = m_delta.z, w = m_delta.w;

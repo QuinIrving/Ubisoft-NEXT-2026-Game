@@ -296,6 +296,6 @@ T Vec3<T>::GetMagnitudeSquared() const {
 template <typename T>
 void Vec3<T>::Print() const {
 	char buffer[128];
-	std::snprintf(buffer, sizeof(buffer), "[ %.2f, %.2f, %.2f ]\n", x, y, z);
+	std::snprintf(buffer, sizeof(buffer), "[ %.3f, %.3f, %.3f ]\n", x, y, z);
 	OutputDebugString(buffer);
 }
