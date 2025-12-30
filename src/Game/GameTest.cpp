@@ -22,8 +22,10 @@
 #include "Math/Vec4.h"
 #include "Math/Quaternion.h"
 #include "Math/Mat4.h"
+#include "Graphics/Pipeline.h"
 
 
+Pipeline& p = Pipeline::GetInstance();
 
 //------------------------------------------------------------------------
 // Example data....
@@ -54,140 +56,8 @@ Mat4<float> m;*/
 //------------------------------------------------------------------------
 void Init()
 {
-	//Mat4<float> m;
-	//m.Print();
-	float arr[] = { 1,   2,  3,  4,
-					5,   6,  7,  8,
-					9,  10, 11, 12,
-					13, 14, 15, 16 };
-	Mat4<float> m1 = Mat4<float>(arr);
-	//m1.Print();
-
-	std::array<float, 16> arr1 = { 5,   11,  7,  3,
-					-4,   9,  2,  2,
-					-8,  16, -9, 1,
-					6, 2, 0, 1 };
-
-	Mat4<float> m2 = Mat4<float>(arr1);
-	//OutputDebugString("\n\n");
-	//m2.Print();
-
-	std::array<Vec4<float>, 4> arr2 = {Vec4<float>(1, 2, 3, 4), Vec4<float>(5, 6, 7, 8), Vec4<float>(9, 10, 11, 12), Vec4<float>(13, 14, 15, 16)};
-
-
-	Mat4<float> m3 = Mat4<float>(arr2);
-	/*m3.Print();
-	OutputDebugString("\n\n");
-	(m3 * m2).Print();
-	OutputDebugString("\n\n");
-	m2 *= m3;
-	m2.Print();*/
-
-	std::array<Vec4<float>, 4> arrNEW = { Vec4<float>(0.7071, -0.3062, 1.2795, 0), Vec4<float>(1.2247, 0.1768, -0.7392, 0), Vec4<float>(-1.4142, 0.1768, 0.9186, 0), Vec4<float>(0, 0, 0, 1) };
-	//auto mNew = Mat4<float>(arrNEW);
-	//auto ma = mNew.GetNormalMatrix();
-	//mNew.Print();
-	//OutputDebugString("\n");
-	//ma.Print();
-
-	auto v = Vec4<float>(-276, -42, 127, 1);
-	//(v * Mat4<float>::GetIdentity()).Print();
-	//OutputDebugString("\n");
-	std::array<Vec4<float>, 4> arrTranslate = { Vec4<float>(1, 2, 3, 4), Vec4<float>(-5, 6, 7, 8), Vec4<float>(9, -10, 11, 12), Vec4<float>(13, 14, -15, 16) };
-	//(v * Mat4<float>(arrTranslate)).Print();
-	//OutputDebugString("\n");
-	//v *= Mat4<float>(arrTranslate);
-	//v.Print();
-
-	auto mp = Mat4<float>::Scale(v);
-	mp.Print();
-	Vec4<float> v1 = Vec4<float>(1, 1, 1, 1);
-	OutputDebugString("\n");
-	//auto f = v1 * v; // interesting conversion to I presume a quaternion, as there isn't a vec4 * vec4 operator overload. -> went with a delete option to prevent it from happening
-	(v1 * mp).Print();
-	float t = 1;
-
-	/*
-	Quaternion q;
-	//q.Print();
-	Quaternion q1 = Quaternion(0.5f, 1.f, 2.f, 0.97f);
-	//q1.Print();
-	
-	// Quaternion Vec3 axis and angle (axis angle)
-	Quaternion q2 = Quaternion(Vec3<float>(1, 0.71, 1.98), PI/3); // SEEMS GOOD!
-	 
-	// Quaternion 3 rot values (euler angles)
-	Quaternion q3 = Quaternion(25, 36, -47);
-
-	// Quaternion from Mat4 rotation matrix
-	//Quaternion q4 = Quaternion(m3); // NOT COMPLETE -> implement?
-	//q3.Normalize();
-	auto v = Vec3<float>(2.f, 3.f, 1.7f);
-	q1.Print();
-	v *= q1;
-	q1.Normalize();
-	q1.Print();
-	//v.Print();
-	OutputDebugString("\n");
-	
-	v.Print();*/
-	//auto p = v * q1;
-	//p.Print();
-
-	//q1.Print();
-	//q2.Print();
-	//q3.Print();
-	//q4.Print();
-
-	//auto z = q1.GetDelta();
-	//auto w = q1.GetRotationMatrix();
-	//w.Print();
-	//q1.Print();
-	//q2.Print();
-
-	//OutputDebugString("\nResults:\n");
-	//(q1 * q2).Print();
-	//q2 *= q1;
-	//q2.Print();
-	//(~q1).Print();
-	//q2.Conjugate();
-	//q2.Print();
-
-
-	float a = 1.f;
-	/*t2.Print();
-	t3.Print();
-	t4.Print();
-	q.Print();
-	m.Print();*/
-	// TESTING WORK!
-	// Vec2
-	/*OutputDebugString("\nVEC3:\n");
-	Vec3<float> v3 = Vec3<float>(-2.5f, 9.f, -1.1f);
-	v3.Print();
-	Vec3<float> v3a = Vec3<float>(5, 5, 5);
-	v3a.Print();
-	OutputDebugString("\nResults:\n");
-	/*auto d = v3.CrossProduct(v3a);
-	auto dS = Vec3<float>::CrossProduct(v3, v3a);
-	auto b = v3a.CrossProduct(v3);
-	auto bS = Vec3<float>::CrossProduct(v3a, v3);* /
-	
-
-	v3.CrossProduct(v3a).Print();
-	Vec3<float>::CrossProduct(v3, v3a).Print();
-	v3a.CrossProduct(v3).Print();
-	Vec3<float>::CrossProduct(v3a, v3).Print();
-
-
-	OutputDebugString("\nVEC4:\n");
-	Vec4<float> v4 = Vec4<float>(-2.5f, 9.f, -1.1f, 3.f);
-	v4.Print();
-	Vec4<float> v4a = Vec4<float>(5, 5, 5, 5);
-	OutputDebugString("\nResults:\n");*/
-
-
-	
+	/*alignas(16) float o[4] = {1.f, 2.f, 3.f, 4.f};
+	__m128 veca = _mm_load_ps(o);*/ // SIMD for SSE x86, need to worry about mac os as well.
 
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
@@ -199,6 +69,7 @@ void Init()
 	testSprite->CreateAnimation(ANIM_RIGHT, speed, { 16,17,18,19,20,21,22,23 });
 	testSprite->CreateAnimation(ANIM_FORWARDS, speed, { 24,25,26,27,28,29,30,31 });
 	testSprite->SetScale(1.0f);
+	int a = 1;
 	//------------------------------------------------------------------------
 }
 
@@ -283,6 +154,7 @@ void Update(const float deltaTime)
 //------------------------------------------------------------------------
 void Render()
 {
+	p.Render(std::vector<int>({}), std::vector<uint32_t>({}), 47);
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
 	testSprite->Draw();
