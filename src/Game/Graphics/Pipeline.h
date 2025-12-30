@@ -1,5 +1,7 @@
 #pragma once
 #include <vector>
+#include "Vertex.h"
+#include "ModelAttributes.h"
 
 /*
     Singleton (thread safe) Pipeline class for rendering.
@@ -10,8 +12,8 @@ public:
     static Pipeline& GetInstance();
 
     // business logic -> probably some way to bind vertex shader, not sure if needed though.
-    void Render(const std::vector<int>& vertices, const std::vector<uint32_t>& indices, const int& modelAttributes);
-    // Vertex vertices, uint32_t indices, ModelAttributes modelAttributes, potentially a vertex shader passed in, but binding is probably smarter?
+    void Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes);
+    
 
     //VertexOut VertexShader(const Vertex& vin, const ModelAttributes& MA, const Mat4<float>& V, const Mat4<float>& P);
     // VertexProcessor

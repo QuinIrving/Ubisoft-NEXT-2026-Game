@@ -6,7 +6,7 @@ Pipeline& Pipeline::GetInstance() {
     return m_instance;
 }
 
-void Pipeline::Render(const std::vector<int>& vertices, const std::vector<uint32_t>& indices, const int& modelAttributes) {
+void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) {
     /* Input assembler(is this function)
      * Vertex Shader
      * Tessellation stage (Shader)?
