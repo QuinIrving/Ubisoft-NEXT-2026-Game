@@ -11,7 +11,60 @@ Pipeline& Pipeline::GetInstance() {
 }
 
 void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) {
-    std::vector<VertexOut> clipVertices;
+    // Pretend Camera and Lights, and model Matrix
+    Mat4<float> pretendModel = Mat4<float>::GetIdentity();
+    Mat4<float> cameraView = Mat4<float>::GetIdentity();
+
+    // ---- Object -> Model -> view transform Vertex Process ----
+    std::vector<VertexOut> viewVerts;
+    viewVerts.reserve(indices.size());
+
+    for (uint32_t i : indices) {
+        const Vertex& v = vertices[i];
+
+
+        // Apply MV properly with copy of v.
+    }
+
+
+    // ---- BACK FACE CULL [BYPASS] ----
+    // ---- View Frustrum rejection (triangle-level) [BYPASS] ----
+
+
+    // ---- Screen-size Estimation [BYPASS] ----
+
+
+    // ---- Dynamic tessellation [BYPASS] -> should output triangles, not vertices ----
+
+
+    // ---- Displacement mapping [BYPASS] ----
+        // Re-compute normals
+        // Re-test frustum
+        // Kill triangles that got moved out (may need to worry about triangles that should also be moved in? not sure performance wise) (for moving in -> never resurrect dead triangles
+            // instead will 1. expand object/sector bounds by max displacement offline, allow triangles near the frustrum to survive early tests, then kill triangles after displacement
+            // if they exit frustum
+
+
+
+    // ---- Vertex Shading & Lighting [BYPASS] ----
+
+
+    // ---- Apply Projection ----
+    // ---- ClipSpace Cull & near-plane clipping [BYPASS] -> do before perspective divide. ----
+
+
+    // ---- Perspective Divide----
+    // ---- Viewport mapping ----
+        // Reject degenerate triangles/zero-area triangles [BYPASS]
+
+
+    // ---- Submit to API ----
+
+}
+
+
+
+    /*std::vector<VertexOut> clipVertices;
     clipVertices.reserve(vertices.size());
     
     for (const Vertex& v : vertices) {
@@ -34,7 +87,7 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
         Vec4<float> col3 = v3.GetColour();
 
         App::DrawTriangle(pos1.x, pos1.y, pos1.z, 1, pos2.x, pos2.y, pos2.z, 1, pos3.x, pos3.y, pos3.z, 1, col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, false);
-    };
+    };*/
 
     /* Input assembler(is this function)
      * Vertex Shader
@@ -114,8 +167,10 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
      * 
      * 
      * 
-     */
-}
+     *
+     
+}*/
+
 
 VertexOut Pipeline::VertexShader(const Vertex& v, const ModelAttributes& MA, const Mat4<float>& V, const Mat4<float>& P) {
     Vec4<float> worldPos = v * MA.modelMatrix;
