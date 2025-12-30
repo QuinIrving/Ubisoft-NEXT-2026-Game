@@ -39,10 +39,11 @@ Quaternion::Quaternion(float rotX, float rotY, float rotZ) { // euler angles -> 
 	m_delta = Vec4<float>(x, y, z, w);
 }
 
+/*
 Quaternion::Quaternion(const Mat4<float>& rotMat) { // rot mat4
 	// bypass for now.
 	throw new std::runtime_error("Quaternion constructor given a mat4 rotation matrix is not yet implemented.\n");
-}
+}*/
 
 Quaternion& Quaternion::operator=(const Quaternion& other) {
 	if (this != &other) {

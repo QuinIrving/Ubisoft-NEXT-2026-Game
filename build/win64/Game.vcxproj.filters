@@ -18,9 +18,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ClipVertex.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Colour.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -37,6 +34,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Vertex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\VertexOut.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\VertexPostClip.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Math\Mat4.h">

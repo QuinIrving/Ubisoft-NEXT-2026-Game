@@ -11,7 +11,7 @@ public:
 	Quaternion(const Vec4<float>& delta) : m_delta(delta) {};
 	Quaternion(const Vec3<float>& axis, float angle); // axis angle
 	Quaternion(float rotX, float rotY, float rotZ); // euler angles
-	Quaternion(const Mat4<float>& rotMat); // rotation matrix
+	//Quaternion(const Mat4<float>& rotMat); // rotation matrix
 
 	Quaternion(const Quaternion& other) : m_delta(other.m_delta) {};
 	Quaternion& operator=(const Quaternion& other);

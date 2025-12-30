@@ -49,6 +49,12 @@ Mat4<float> m;*/
 //m.Print();
 //q.Print();
 
+
+Vertex v1 = Vertex(0, 0, -0.5);
+Vertex v2 = Vertex(APP_VIRTUAL_WIDTH / 2.f, APP_VIRTUAL_HEIGHT, -0.5);
+Vertex v3 = Vertex(APP_VIRTUAL_WIDTH, 0, -0.5);
+
+
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
@@ -154,7 +160,8 @@ void Update(const float deltaTime)
 //------------------------------------------------------------------------
 void Render()
 {
-	p.Render(std::vector<int>({}), std::vector<uint32_t>({}), 47);
+	//v1.SetColour(0, 0, 0, 255);
+	p.Render(std::vector<Vertex>({v1, v2, v3}), std::vector<uint32_t>({0, 1, 2}), ModelAttributes());
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
 	testSprite->Draw();

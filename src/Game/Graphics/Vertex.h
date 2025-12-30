@@ -12,7 +12,7 @@ public:
 	constexpr Vertex(Vec3<float> pos, Vec4<float> col = { 1, 1, 1, 1 }, Vec3<float> norm = { 0, 0, 1 }, Vec2<float> uv = {}, Vec3<float> tan = {}, float tanW = 0.f) :
 		m_position(pos), m_colour(col), m_normal(norm), m_UV(uv), m_tangent(tan), m_tangentW(tanW) {}
 
-	Vec4<float> operator*(const Mat4<float>& rhs) const { return m_position * rhs; }
+	Vec4<float> operator*(const Mat4<float>& rhs) const { return Vec4<float>(m_position) * rhs; }
 
 	const Vec3<float>& GetPosition() const { return m_position; }
 	const Vec4<float>& GetColour() const { return m_colour; }
@@ -27,10 +27,10 @@ public:
 	void SetTangentW(float tw) { m_tangentW = tw; }
 
 private:
-	Vec3<float> m_position = { 0, 0, 0 };
-	Vec4<float> m_colour = { 1, 1, 1, 1 };
+	Vec3<float> m_position = { 0, 0, 1 };
+	Vec4<float> m_colour = { 1.f, 1.f, 1.f, 1.f };
 	Vec3<float> m_normal = { 0, 0, 1 };
 	Vec2<float> m_UV = { 0, 0 };
-	Vec3<float> m_tangent = { 0, 0, 0 };
-	float m_tangentW = 0.f; // should be -1 or 1 if tangent is defined.
+	Vec3<float> m_tangent = { 0, 1, 0 };
+	float m_tangentW = 1.f; // should be -1 or 1 if tangent is defined.
 };

@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 #include "Vertex.h"
+#include "VertexOut.h"
+#include "VertexPostClip.h"
 #include "ModelAttributes.h"
 
 /*
@@ -14,6 +16,7 @@ public:
     // business logic -> probably some way to bind vertex shader, not sure if needed though.
     void Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes);
     
+    VertexOut VertexShader(const Vertex& v, const ModelAttributes& MA, const Mat4<float>& V, const Mat4<float>& P);
 
     //VertexOut VertexShader(const Vertex& vin, const ModelAttributes& MA, const Mat4<float>& V, const Mat4<float>& P);
     // VertexProcessor

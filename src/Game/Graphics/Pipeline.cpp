@@ -1,4 +1,8 @@
 #include "Pipeline.h"
+#include "Vertex.h"
+#include "VertexOut.h"
+#include "VertexPostClip.h"
+#include <app.h>
 
 Pipeline& Pipeline::GetInstance() {
     static Pipeline m_instance; // thread safe
@@ -7,6 +11,31 @@ Pipeline& Pipeline::GetInstance() {
 }
 
 void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) {
+    std::vector<VertexOut> clipVertices;
+    clipVertices.reserve(vertices.size());
+    
+    for (const Vertex& v : vertices) {
+        clipVertices.push_back(VertexShader(v, modelAttributes, Mat4<float>::GetIdentity(), Mat4<float>::GetIdentity()));
+    }
+
+    //std::vector<VertexPostClip> postClipVertices;
+    //clipVertices.reserve(vertices.size());
+    for (int i = 0; i < indices.size(); i += 3) {
+        VertexPostClip v1 = clipVertices[i].PerspectiveDivide();
+        VertexPostClip v2 = clipVertices[i + 1].PerspectiveDivide();
+        VertexPostClip v3 = clipVertices[i + 2].PerspectiveDivide();
+
+        Vec3<float> pos1 = v1.GetPosition();
+        Vec3<float> pos2 = v2.GetPosition();
+        Vec3<float> pos3 = v3.GetPosition();
+
+        Vec4<float> col1 = v1.GetColour();
+        Vec4<float> col2 = v2.GetColour();
+        Vec4<float> col3 = v3.GetColour();
+
+        App::DrawTriangle(pos1.x, pos1.y, pos1.z, 1, pos2.x, pos2.y, pos2.z, 1, pos3.x, pos3.y, pos3.z, 1, col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, false);
+    };
+
     /* Input assembler(is this function)
      * Vertex Shader
      * Tessellation stage (Shader)?
@@ -86,4 +115,24 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
      * 
      * 
      */
+}
+
+VertexOut Pipeline::VertexShader(const Vertex& v, const ModelAttributes& MA, const Mat4<float>& V, const Mat4<float>& P) {
+    Vec4<float> worldPos = v * MA.modelMatrix;
+    Vec4<float> viewPos = worldPos * V;
+
+    Mat4<float> normalMatrix = MA.modelMatrix.GetNormalMatrix();
+    Vec3<float> normal = Vec4<float>(v.GetNormal(), 0.f) * normalMatrix;
+    normal = normal.GetNormalized();
+    Vec3<float> tangent = Vec4<float>(v.GetTangent(), 0.f) * normalMatrix;
+    tangent = tangent.GetNormalized();
+
+    // Doing Gram-Schmidt orthongonalization for better accuracy
+    tangent = (tangent - (normal * Vec3<float>::DotProduct(normal, tangent))).GetNormalized();
+
+    Vec3<float> bitangent = (normal.CrossProduct(tangent) * v.GetTangentW()).GetNormalized();
+
+    VertexOut vOut{ viewPos * P, worldPos, viewPos, v.GetColour(), normal, v.GetUV(), tangent, bitangent };
+
+    return vOut;
 }
