@@ -4,6 +4,8 @@
 #include "Math/Vec4.h"
 #include "VertexPostClip.h"
 
+// OLD! can remove!!
+
 class VertexOut {
 public:
 	VertexOut(Vec4<float> pos) : m_position(pos) {}

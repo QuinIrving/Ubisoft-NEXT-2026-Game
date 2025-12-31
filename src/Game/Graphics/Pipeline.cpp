@@ -1,8 +1,11 @@
+#include <app.h>
 #include "Pipeline.h"
 #include "Vertex.h"
 #include "VertexOut.h"
 #include "VertexPostClip.h"
-#include <app.h>
+#include "ViewVertex.h"
+#include "ProjectionVertex.h"
+#include "ScreenSpaceVertex.h"
 
 Pipeline& Pipeline::GetInstance() {
     static Pipeline m_instance; // thread safe
@@ -10,22 +13,36 @@ Pipeline& Pipeline::GetInstance() {
     return m_instance;
 }
 
-void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) {
+// IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
+constexpr bool wireframe = true;
+void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) const {
     // Pretend Camera and Lights, and model Matrix
     Mat4<float> pretendModel = Mat4<float>::GetIdentity();
     Mat4<float> cameraView = Mat4<float>::GetIdentity();
 
+    // Vertex -> MV applied to get View and World space coords new Vertex = VertexPrime
+    // VertexPrime -> turned into some form of Triangle = Triangle
+    // Triangle -> Tessellated, and displacement mapped to generate more triangles of Type Triangle
+    // VertexShading and Lighting applies, (not sure if this constitues any change, let's say not for now)
+    // Triangle has it's points with projection applied, we do some culling and clipping & finally perspective divide
+    // That perspective divided thing should have new vertices and new triangle type
+    // Draw triangle with new type TriNew;
+
+    // Need to also worry about moving light into either view or keep in world space. (may even have it's own model matrix to apply to itself)
+
     // ---- Object -> Model -> view transform Vertex Process ----
-    std::vector<VertexOut> viewVerts;
+    std::vector<ViewVertex> viewVerts;
     viewVerts.reserve(indices.size());
 
     for (uint32_t i : indices) {
         const Vertex& v = vertices[i];
 
 
-        // Apply MV properly with copy of v.
+        // Apply MV properly with copy of v. -> new object: ViewVertex, which we use to assemble a triangle TriOut or Triangle?
+        viewVerts.push_back(ProcessVertex(v, pretendModel, cameraView));
     }
 
+    int breakA = 1;
 
     // ---- BACK FACE CULL [BYPASS] ----
     // ---- View Frustrum rejection (triangle-level) [BYPASS] ----
@@ -34,7 +51,7 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
     // ---- Screen-size Estimation [BYPASS] ----
 
 
-    // ---- Dynamic tessellation [BYPASS] -> should output triangles, not vertices ----
+    // ---- Dynamic tessellation [BYPASS] -> should output triangles, not vertices ---- (SHould take in triangles and output more triangles)
 
 
     // ---- Displacement mapping [BYPASS] ----
@@ -50,44 +67,89 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
 
     // ---- Apply Projection ----
+    std::vector<ProjectionVertex> projectionVertices;
+    projectionVertices.reserve(viewVerts.size());
+    
+    for (const ViewVertex& v : viewVerts) {
+        projectionVertices.push_back(ProjectVertex(v));
+    }
+    int breakB = 1;
+
     // ---- ClipSpace Cull & near-plane clipping [BYPASS] -> do before perspective divide. ----
 
 
     // ---- Perspective Divide----
     // ---- Viewport mapping ----
         // Reject degenerate triangles/zero-area triangles [BYPASS]
-
-
-    // ---- Submit to API ----
-
-}
-
-
-
-    /*std::vector<VertexOut> clipVertices;
-    clipVertices.reserve(vertices.size());
+    std::vector<ScreenSpaceVertex> finalVertices;
+    finalVertices.reserve(projectionVertices.size());
     
-    for (const Vertex& v : vertices) {
-        clipVertices.push_back(VertexShader(v, modelAttributes, Mat4<float>::GetIdentity(), Mat4<float>::GetIdentity()));
+    for (const ProjectionVertex& v : projectionVertices) {
+        finalVertices.push_back(HomogenizeAndViewportMap(v));
     }
 
-    //std::vector<VertexPostClip> postClipVertices;
-    //clipVertices.reserve(vertices.size());
-    for (int i = 0; i < indices.size(); i += 3) {
-        VertexPostClip v1 = clipVertices[i].PerspectiveDivide();
-        VertexPostClip v2 = clipVertices[i + 1].PerspectiveDivide();
-        VertexPostClip v3 = clipVertices[i + 2].PerspectiveDivide();
+    // ---- Submit to API ----
+    for (int i = 0; i < finalVertices.size(); i += 3) {
+        SubmitTriangle(finalVertices[i], finalVertices[i + 1], finalVertices[i + 2], wireframe);
+    }
+    
+}
 
-        Vec3<float> pos1 = v1.GetPosition();
-        Vec3<float> pos2 = v2.GetPosition();
-        Vec3<float> pos3 = v3.GetPosition();
+ViewVertex Pipeline::ProcessVertex(const Vertex& v, const Mat4<float> M, const Mat4<float> V) const {
+    Vec4<float> worldPos = Vec4<float>(v.GetPosition(), 1) * M;
+    Vec4<float> viewPos = worldPos * V;
 
-        Vec4<float> col1 = v1.GetColour();
-        Vec4<float> col2 = v2.GetColour();
-        Vec4<float> col3 = v3.GetColour();
+    Mat4<float> MVNormalMatrix = (M * V).GetNormalMatrix();
 
-        App::DrawTriangle(pos1.x, pos1.y, pos1.z, 1, pos2.x, pos2.y, pos2.z, 1, pos3.x, pos3.y, pos3.z, 1, col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, false);
-    };*/
+    Vec4<float> worldNormal = Vec4<float>(v.GetNormal(), 0) * M.GetNormalMatrix();
+    Vec4<float> viewNormal = Vec4<float>(v.GetNormal(), 0) * MVNormalMatrix;
+
+    Vec4<float> viewTangent = Vec4<float>(v.GetTangent(), 0) * M * V;
+
+    return ViewVertex(worldPos, viewPos, worldNormal, viewNormal, viewTangent, v.GetUV(), v.GetColour());
+}
+
+ProjectionVertex Pipeline::ProjectVertex(const ViewVertex& v) const {
+    Vec4<float> projectPosition = Vec4<float>(v.GetViewPosition(), 1) * m_projectionMatrix;
+    return ProjectionVertex(projectPosition, v.GetColour());
+}
+
+ScreenSpaceVertex Pipeline::HomogenizeAndViewportMap(const ProjectionVertex& v) const {
+    const Vec4<float>& oldPos = v.GetClipPosition();
+    float w = oldPos.w;
+
+    float ndcX = oldPos.x / w;
+    float ndcY = oldPos.y / w;
+    float ndcZ = oldPos.z / w;
+
+    float x = (ndcX + 1.f) * 0.5f;
+    float y = (ndcY + 1.f) * 0.5f;
+    
+    Vec2<float> screenPos = {x * APP_VIRTUAL_WIDTH, y * APP_VIRTUAL_HEIGHT };
+    float z = ndcZ;
+
+    return ScreenSpaceVertex(screenPos, z, w, v.GetColour()); // We transition to Vec3 colours here, may be able to do this earlier (or entirely) due to only vert colours not per fragment
+}
+
+void Pipeline::SubmitTriangle(const ScreenSpaceVertex& v1, const ScreenSpaceVertex& v2, const ScreenSpaceVertex& v3, bool isWireframe) const {
+    auto pos1 = v1.GetScreenPosition();
+    auto col1 = v1.GetColour();
+
+    auto pos2 = v2.GetScreenPosition();
+    auto col2 = v2.GetColour();
+
+    auto pos3 = v3.GetScreenPosition();
+    auto col3 = v3.GetColour();
+    
+    /*
+    App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth(), 1, pos2.x, pos2.y, v2.GetDepth(), 1, pos3.x, pos3.y, v3.GetDepth(), 1,
+        col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, isWireframe);
+    */
+    
+    App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth(), v1.GetW(), pos2.x, pos2.y, v2.GetDepth(), v2.GetW(), pos3.x, pos3.y, v3.GetDepth(), v3.GetW(),
+        col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, isWireframe);
+    
+}
 
     /* Input assembler(is this function)
      * Vertex Shader
@@ -171,23 +233,3 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
      
 }*/
 
-
-VertexOut Pipeline::VertexShader(const Vertex& v, const ModelAttributes& MA, const Mat4<float>& V, const Mat4<float>& P) {
-    Vec4<float> worldPos = v * MA.modelMatrix;
-    Vec4<float> viewPos = worldPos * V;
-
-    Mat4<float> normalMatrix = MA.modelMatrix.GetNormalMatrix();
-    Vec3<float> normal = Vec4<float>(v.GetNormal(), 0.f) * normalMatrix;
-    normal = normal.GetNormalized();
-    Vec3<float> tangent = Vec4<float>(v.GetTangent(), 0.f) * normalMatrix;
-    tangent = tangent.GetNormalized();
-
-    // Doing Gram-Schmidt orthongonalization for better accuracy
-    tangent = (tangent - (normal * Vec3<float>::DotProduct(normal, tangent))).GetNormalized();
-
-    Vec3<float> bitangent = (normal.CrossProduct(tangent) * v.GetTangentW()).GetNormalized();
-
-    VertexOut vOut{ viewPos * P, worldPos, viewPos, v.GetColour(), normal, v.GetUV(), tangent, bitangent };
-
-    return vOut;
-}

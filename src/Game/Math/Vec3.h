@@ -8,6 +8,9 @@ template <typename T>
 class Vec4;
 
 template <typename T>
+class Mat4;
+
+template <typename T>
 class Vec3{
 public:
 	T x{};
@@ -44,6 +47,10 @@ public:
 	Vec3<T>& operator*=(const Vec3<T>& rhs);
 	Vec3<T> operator/(const Vec3<T>& rhs) const;
 	Vec3<T>& operator/=(const Vec3<T>& rhs);
+
+	// Matrix multiplication
+	Vec4<T> operator*(const Mat4<T>& rhs) const;
+	Vec3<T>& operator*=(const Mat4<T>& rhs);
 
 	// Quaternion multiplication
 	Vec3<T> operator*(const Quaternion& q) const;

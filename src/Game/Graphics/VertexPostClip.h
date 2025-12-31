@@ -3,6 +3,8 @@
 #include "Math/Vec3.h"
 #include "Math/Vec4.h"
 
+// OLD! CAN REMOVE
+
 class VertexPostClip {
 public:
 	VertexPostClip(Vec3<float> position, float invW, Vec3<float> worldPosition, Vec3<float> viewPosition, Vec4<float> colour, Vec3<float> normal, Vec2<float> UV, Vec3<float> tangent, Vec3<float> bitangent)

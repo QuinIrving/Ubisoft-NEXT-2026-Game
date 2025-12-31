@@ -85,6 +85,21 @@ inline Mat4<T> Mat4<T>::Scale(Vec4<T> v) {
 	return m;
 }
 
+template <typename T>
+inline Vec4<T> Vec3<T>::operator*(const Mat4<T>& rhs) const {
+	return Vec4<T>(*this) * rhs;
+}
+
+template <typename T>
+inline Vec3<T>& Vec3<T>::operator*=(const Mat4<T>& rhs) {
+	Vec3<T> newV = Vec4<T>(*this) * rhs;
+	
+	this->x = newV.x;
+	this->y = newV.y;
+	this->z = newV.z;
+
+	return *this;
+}
 
 template <typename T>
 inline Vec3<T> Vec3<T>::operator*(const Quaternion& q) const {

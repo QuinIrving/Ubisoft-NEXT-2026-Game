@@ -375,11 +375,14 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Colour.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ModelAttributes.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Pipeline.h" />
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ProjectionVertex.h" />
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ScreenSpaceVertex.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Texture.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Triangle.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Vertex.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\VertexOut.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\VertexPostClip.h" />
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ViewVertex.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Math\Mat4.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Math\MatVecQuat_ops.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Math\MathConstants.h" />

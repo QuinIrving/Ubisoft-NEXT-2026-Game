@@ -50,11 +50,17 @@ Mat4<float> m;*/
 //q.Print();
 
 
-Vertex v1 = Vertex(0, 0, -0.5);
-Vertex v2 = Vertex(APP_VIRTUAL_WIDTH / 2.f, APP_VIRTUAL_HEIGHT, -0.5);
-Vertex v3 = Vertex(APP_VIRTUAL_WIDTH, 0, -0.5);
+// Don't forget we have a negative z camera view.
+Vertex v1 = Vertex(-1, -1, -5);
+Vertex v2 = Vertex(1, -1, -5);
+Vertex v3 = Vertex(-1, 1, -5);
 
+//Vertex v4 = Vertex(1, -1, -1);
+Vertex v4 = Vertex(1.f, 1, -5);
+//Vertex v6 = Vertex(-1, 1, -1);
 
+std::vector<Vertex> randV = {};
+std::vector<uint32_t> indices = {};
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
@@ -64,6 +70,12 @@ void Init()
 {
 	/*alignas(16) float o[4] = {1.f, 2.f, 3.f, 4.f};
 	__m128 veca = _mm_load_ps(o);*/ // SIMD for SSE x86, need to worry about mac os as well.
+
+	for (int i = 0; i < 1966; ++i) {
+		indices.push_back(i);
+		randV.push_back(Vertex(1, 2, 3));
+	}
+
 
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
@@ -161,16 +173,18 @@ void Update(const float deltaTime)
 void Render()
 {
 	//v1.SetColour(0, 0, 0, 255);
-	p.Render(std::vector<Vertex>({v1, v2, v3}), std::vector<uint32_t>({0, 1, 2}), ModelAttributes());
+	p.Render(std::vector<Vertex>({v1, v2, v3, v4}), std::vector<uint32_t>({0, 1, 2, 1, 3, 2}), ModelAttributes());
+	//App::DrawTriangle(600.0f, 300.0f, -0.5f, 1, 650.0f, 400.0f, -0.5f, 1, 700.0f, 300.0f, -0.5f, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+	//p.Render(randV, indices, ModelAttributes());
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
-	testSprite->Draw();
+	//testSprite->Draw();
 	//------------------------------------------------------------------------
 
 	//------------------------------------------------------------------------
 	// Example Text.
 	//------------------------------------------------------------------------
-	App::Print(100, 100, "Sample Text");
+	//App::Print(100, 100, "Sample Text");
 
 	//------------------------------------------------------------------------
 	// Example Line Drawing.
@@ -189,16 +203,17 @@ void Render()
 		const float ey = 700 - cosf(a + i * 0.1f) * 60.0f;
 		g = (float)i / 20.0f;
 		b = (float)i / 20.0f;
-		App::DrawLine(sx, sy, ex, ey, r, g, b);
+		//App::DrawLine(sx, sy, ex, ey, r, g, b);
 	}
 
 	//------------------------------------------------------------------------
 	// Example Triangle Drawing.
 	//------------------------------------------------------------------------
-	App::DrawTriangle(600.0f, 300.0f, -1, 1, 650.0f, 400.0f, 0, 1, 700.0f, 300.0f, 0, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-	App::DrawTriangle(500.0f, 300.0f, 0, 1, 550.0f, 450.0f, 0.5, 1, 700.0f, 340.0f, -0.5, 1, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+	//App::DrawTriangle(600.0f, 300.0f, -1, 1, 650.0f, 400.0f, 0, 1, 700.0f, 300.0f, 0, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+	//App::DrawTriangle(500.0f, 300.0f, 0, 1, 550.0f, 450.0f, 0.5, 1, 700.0f, 340.0f, -0.5, 1, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 	//App::DrawTriangle(800.0f, 300.0f, 0, 1, 850.0f, 400.0f, 0, 1, 900.0f, 300.0f, 0, 1, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, true);
-	App::DrawTriangle(800.0f, 300.0f, 0, 1, 850.0f, 400.0f, 0, 1, 900.0f, 300.0f, 0, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, true);
+	//App::DrawTriangle(800.0f, 300.0f, 0, 1, 850.0f, 400.0f, 0, 1, 900.0f, 300.0f, 0, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, true);
+	//App::DrawTriangle(320, 576, -0.5f, 1, 512, 384, -0.5f, 1, 704, 192, -0.5f, 1, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 0.f, 1.f, 0.f, false);
 }
 //------------------------------------------------------------------------
 // Add your shutdown code here. Called when the APP_QUIT_KEY is pressed.
