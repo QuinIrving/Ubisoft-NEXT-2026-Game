@@ -24,6 +24,7 @@
 #include "Math/Mat4.h"
 #include "Graphics/Pipeline.h"
 #include "Objects/Quad.h"
+#include <main.h>
 
 
 Pipeline& p = Pipeline::GetInstance();
@@ -66,6 +67,13 @@ std::vector<uint32_t> indices = {};
 Quad q = Quad(1, 1, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
 //------------------------------------------------------------------------
 
+float mX;
+float mY;
+Vec2<float> mousePos;
+Vec2<float> diff;
+
+Vec2<int> windowSize;
+
 //------------------------------------------------------------------------
 // Called before first update. Do any initial setup here.
 //------------------------------------------------------------------------
@@ -73,9 +81,11 @@ void Init()
 {
 	/*alignas(16) float o[4] = {1.f, 2.f, 3.f, 4.f};
 	__m128 veca = _mm_load_ps(o);*/ // SIMD for SSE x86, need to worry about mac os as well.
+	windowSize = { WINDOW_WIDTH, WINDOW_HEIGHT };
+	App::GetMousePos(mX, mY);
+	mousePos = { mX, mY };
 
 	moveForward = true;
-
 	q.Translate(0, 0, -2);
 
 	for (int i = 0; i < 1966; ++i) {
@@ -189,8 +199,67 @@ void Update(const float deltaTime)
 		moveForward = true;
 	}
 
-	q.Translate(0, 0, t);
+	// Mouse rotation
+	/*Need to make all of this compatible with a controller as well! FOr movements and looking and jumping etc, should have a switch statement to handle either scenario*/
+	App::GetMousePos(mX, mY);
+	diff = Vec2<float>(mX, mY) - mousePos;
+	mousePos = { mX, mY };
+	float degX = (diff.y / static_cast<float>(APP_VIRTUAL_HEIGHT)) * p.camera.GetMouseSensitivty(); // Around x axis, we care about mouse Y
+	float degY = (-diff.x / static_cast<float>(APP_VIRTUAL_WIDTH)) * p.camera.GetMouseSensitivty(); // Around y axis we care about mouse X
+	p.camera.RotateXY(degX, degY);
 
+	float camX = 0, camU = 0;
+	float moveSpeed = 0.07;
+
+	// Translation -> controller and keyboard same
+	if (App::GetController().GetLeftThumbStickX() > 0.5f)
+	{
+		camX += moveSpeed;
+	}
+	if (App::GetController().GetLeftThumbStickX() < -0.5f)
+	{
+		camX -= moveSpeed;
+	}
+	if (App::GetController().GetLeftThumbStickY() > 0.5f)
+	{
+		camU += moveSpeed;
+	}
+	if (App::GetController().GetLeftThumbStickY() < -0.5f)
+	{
+		camU -= moveSpeed;
+	}
+
+	float camRotY = 0, camRotX = 0; // around the axis
+	float div = 35;
+	// Rotation (right thumb stick, same as mouse)
+	if (App::GetController().GetRightThumbStickX() > 0.5f)
+	{
+		camRotY -= p.camera.GetMouseSensitivty() / div;
+	}
+	if (App::GetController().GetRightThumbStickX() < -0.5f)
+	{
+		camRotY += p.camera.GetMouseSensitivty() / div;
+	}
+	if (App::GetController().GetRightThumbStickY() > 0.5f)
+	{
+		camRotX -= p.camera.GetMouseSensitivty() / div;
+	}
+	if (App::GetController().GetRightThumbStickY() < -0.5f)
+	{
+		camRotX += p.camera.GetMouseSensitivty() / div;
+	}
+
+	p.camera.RotateXY(camRotX, camRotY);
+	p.camera.Translate(camX, 0, camU);
+
+	if (windowSize != Vec2<int>(WINDOW_WIDTH, WINDOW_HEIGHT)) {
+		p.ResizeWindowProjection(static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT));
+		windowSize = Vec2<int>(WINDOW_WIDTH, WINDOW_HEIGHT);
+	}
+
+	//q.Translate(0, 0, t);
+	//p.camera.RotateXY(0, 10 / deltaTime);
+	//p.camera.
 }
 
 //------------------------------------------------------------------------
@@ -206,7 +275,7 @@ void Render()
 	//p.Render(randV, indices, ModelAttributes());
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
-	testSprite->Draw();
+	//testSprite->Draw();
 
 	float x, y;
 	App::GetMousePos(x, y);
@@ -218,6 +287,9 @@ void Render()
 
 	snprintf(textBuffer, sizeof(textBuffer), "Controller: (%f, %f)", controllerX, controllerY);
 	App::Print(10, APP_VIRTUAL_HEIGHT - 40, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
+
+	snprintf(textBuffer, sizeof(textBuffer), "Window: (%d, %d)", WINDOW_WIDTH, WINDOW_HEIGHT); // USE THIS VALUE FOR OUR AUTO-CHANGING PROJECTION MATRIX!
+	App::Print(10, APP_VIRTUAL_HEIGHT - 80, textBuffer, 0.2f, 0.55f, 0.98f, GLUT_BITMAP_HELVETICA_10);
 
 	// Camera will use a fixed sensitivity (that in settings can be changed), while mouse will use raw input given + sensitivity for our camera input.
 

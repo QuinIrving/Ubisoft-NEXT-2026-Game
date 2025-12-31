@@ -38,42 +38,42 @@ public:
         // PBR lighting
     // Projection and Clipping
 
+    void ResizeWindowProjection(float width, float height);
+
     Pipeline(Pipeline& other) = delete;
     void operator=(const Pipeline&) = delete;
 
-    const Camera camera;
+    Camera camera;
 
 protected:
-    Pipeline() = default;
-    ~Pipeline() {};
+    float m_fovY = PI / 2;
+    const float m_yScale = tanf(m_fovY / 2);
 
-    static Mat4<float> CreateProjectionMatrix() {
-        float fovY = PI / 2; // 90 degrees in radians.
-        float yScale = tanf(fovY / 2);//1.0f / tanf(fovY / 2);
+    Mat4<float> CreateProjectionMatrix() {
+        //float fovY = PI / 2; // 90 degrees in radians.
+        //float yScale = tanf(fovY / 2);//1.0f / tanf(fovY / 2);
         float aspectRatio = static_cast<float>(APP_VIRTUAL_WIDTH) / static_cast<float>(APP_VIRTUAL_HEIGHT);
-
+        // DO want to modify aspect ratio on the fly to create new projection matrix if resized and all of that.
+        //aspectRatio = 2560.f / 1440.f; // Should take the height of window and use it for our aspect ratio, and modify all times our window size changes
         float n{ 1 }; // near
         float f{ 1000 }; // far. 
 
         // Row-major order.
-        
+
         return Mat4<float>(
             {
-            1/(yScale * aspectRatio),   0,		    0,						0,
-            0,                          1/yScale,   0,						0,
+            1 / (m_yScale * aspectRatio),   0,		    0,						0,
+            0,                          1 / m_yScale,   0,						0,
             0,							0,		    -(f / (f - n)),	    -1,
             0,							0,		    -((f * n) / (f - n)),   0
             });
-        /*return Mat4<float>(
-            {
-            yScale / aspectRatio,   0,		    0,						0,
-            0,                          yScale,   0,						0,
-            0,							0,		    (f) / (f - n),	    -1,
-            0,							0,		    (f * n) / (f - n),   0
-            });*/
     }
+    
+    Pipeline() = default;
+    ~Pipeline() {};
+    
 
-    static inline Mat4<float> m_projectionMatrix = CreateProjectionMatrix();
+    Mat4<float> m_projectionMatrix = CreateProjectionMatrix();
 
     // some camera maybe here or a way to bind it for the pipeline to use.
 };

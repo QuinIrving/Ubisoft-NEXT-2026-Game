@@ -15,13 +15,16 @@ public:
 	void Translate(float x, float y, float z);
 	void Translate(const Vec3<float>& v);
 
-	Quaternion GetRotation() { return m_rotation; }
-	Vec4<float> GetPosition() { return m_position; }
-	Vec2<float> GetPitchYaw() { return { m_pitch, m_yaw }; }
-	float GetPitch() { return m_pitch; } // Along X-AXIS -> UP/DOWN camera movement
-	float GetYaw() { return m_yaw; } // Along Y-AXIS -> RIGHT/LEFT camera movement
+	Quaternion GetRotation() const { return m_rotation; }
+	Vec4<float> GetPosition() const { return m_position; }
+	Vec2<float> GetPitchYaw() const { return { m_pitch, m_yaw }; }
+	float GetPitch() const { return m_pitch; } // Along X-AXIS -> UP/DOWN camera movement
+	float GetYaw() const { return m_yaw; } // Along Y-AXIS -> RIGHT/LEFT camera movement
 
 	Mat4<float> GetViewMatrix() const;
+
+	float GetMouseSensitivty() const { return m_senstivity; }
+	void SetMouseSensitivty(float sense) { m_senstivity = sense; }
 
 private:
 	Quaternion m_rotation{};
@@ -29,4 +32,5 @@ private:
 
 	float m_pitch;
 	float m_yaw;
+	float m_senstivity = 100;
 };

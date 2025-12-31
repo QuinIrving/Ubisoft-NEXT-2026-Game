@@ -14,7 +14,7 @@ Pipeline& Pipeline::GetInstance() {
 }
 
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
-constexpr bool wireframe = true;
+constexpr bool wireframe = false;
 void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) const {
     // Pretend Camera and Lights [DOING]
     //Mat4<float> cameraView = Mat4<float>::GetIdentity();
@@ -229,4 +229,10 @@ void Pipeline::SubmitTriangle(const ScreenSpaceVertex& v1, const ScreenSpaceVert
      *
      
 }*/
+
+void Pipeline::ResizeWindowProjection(float width, float height) {
+    float aspectRatio = width / height;
+
+    m_projectionMatrix[0][0] = 1.f / (m_yScale * aspectRatio);
+}
 
