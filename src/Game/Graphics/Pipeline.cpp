@@ -17,7 +17,7 @@ Pipeline& Pipeline::GetInstance() {
 constexpr bool wireframe = true;
 void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) const {
     // Pretend Camera and Lights [DOING]
-    Mat4<float> cameraView = Mat4<float>::GetIdentity();
+    //Mat4<float> cameraView = Mat4<float>::GetIdentity();
 
     // Vertex -> MV applied to get View and World space coords new Vertex = VertexPrime
     // VertexPrime -> turned into some form of Triangle = Triangle
@@ -37,7 +37,7 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
         const Vertex& v = vertices[i];
 
         // Apply MV properly with copy of v. -> new object: ViewVertex, which we use to assemble a triangle TriOut or Triangle?
-        viewVerts.push_back(ProcessVertex(v, modelAttributes.modelMatrix, cameraView));
+        viewVerts.push_back(ProcessVertex(v, modelAttributes.modelMatrix, camera.GetViewMatrix()));
     }
 
     int breakA = 1;

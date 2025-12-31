@@ -8,6 +8,7 @@
 #include "ScreenSpaceVertex.h"
 #include "ModelAttributes.h"
 #include "Math/Mat4.h"
+#include "Camera.h"
 
 /*
     Singleton (thread safe) Pipeline class for rendering.
@@ -40,11 +41,13 @@ public:
     Pipeline(Pipeline& other) = delete;
     void operator=(const Pipeline&) = delete;
 
+    const Camera camera;
+
 protected:
-    constexpr Pipeline() = default;
+    Pipeline() = default;
     ~Pipeline() {};
 
-    static const Mat4<float> CreateProjectionMatrix() {
+    static Mat4<float> CreateProjectionMatrix() {
         float fovY = PI / 2; // 90 degrees in radians.
         float yScale = tanf(fovY / 2);//1.0f / tanf(fovY / 2);
         float aspectRatio = static_cast<float>(APP_VIRTUAL_WIDTH) / static_cast<float>(APP_VIRTUAL_HEIGHT);
@@ -70,7 +73,7 @@ protected:
             });*/
     }
 
-    static inline const Mat4<float> m_projectionMatrix = CreateProjectionMatrix();
+    static inline Mat4<float> m_projectionMatrix = CreateProjectionMatrix();
 
     // some camera maybe here or a way to bind it for the pipeline to use.
 };

@@ -206,7 +206,21 @@ void Render()
 	//p.Render(randV, indices, ModelAttributes());
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
-	//testSprite->Draw();
+	testSprite->Draw();
+
+	float x, y;
+	App::GetMousePos(x, y);
+	char textBuffer[64];
+	snprintf(textBuffer, sizeof(textBuffer), "Mouse: (%f, %f)", x, y);
+	App::Print(10, APP_VIRTUAL_HEIGHT - 20, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
+	float controllerY = App::GetController().GetRightThumbStickY();
+	float controllerX = App::GetController().GetRightThumbStickX();
+
+	snprintf(textBuffer, sizeof(textBuffer), "Controller: (%f, %f)", controllerX, controllerY);
+	App::Print(10, APP_VIRTUAL_HEIGHT - 40, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
+
+	// Camera will use a fixed sensitivity (that in settings can be changed), while mouse will use raw input given + sensitivity for our camera input.
+
 	//------------------------------------------------------------------------
 
 	//------------------------------------------------------------------------
