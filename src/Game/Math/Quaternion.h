@@ -34,5 +34,5 @@ public:
 	void Print() const;
 
 private:
-	Vec4<float> m_delta; // x, y, z are the vector components.
+	Vec4<float> m_delta; // x, y, z are the vector components. w is the real
 };

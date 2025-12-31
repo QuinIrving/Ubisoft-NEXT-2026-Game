@@ -23,6 +23,7 @@
 #include "Math/Quaternion.h"
 #include "Math/Mat4.h"
 #include "Graphics/Pipeline.h"
+#include "Objects/Quad.h"
 
 
 Pipeline& p = Pipeline::GetInstance();
@@ -48,19 +49,21 @@ Mat4<float> m;*/
 
 //m.Print();
 //q.Print();
-
+bool moveForward;
 
 // Don't forget we have a negative z camera view.
-Vertex v1 = Vertex(-1, -1, -5);
-Vertex v2 = Vertex(1, -1, -5);
-Vertex v3 = Vertex(-1, 1, -5);
+Vertex v1 = Vertex(-1, -1, -1);
+Vertex v2 = Vertex(1, -1, -10);
+Vertex v3 = Vertex(-1, 1, -900);
 
 //Vertex v4 = Vertex(1, -1, -1);
-Vertex v4 = Vertex(1.f, 1, -5);
+Vertex v4 = Vertex(1.f, 1, 0);
 //Vertex v6 = Vertex(-1, 1, -1);
 
 std::vector<Vertex> randV = {};
 std::vector<uint32_t> indices = {};
+
+Quad q = Quad(1, 1, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
 //------------------------------------------------------------------------
 
 //------------------------------------------------------------------------
@@ -70,6 +73,10 @@ void Init()
 {
 	/*alignas(16) float o[4] = {1.f, 2.f, 3.f, 4.f};
 	__m128 veca = _mm_load_ps(o);*/ // SIMD for SSE x86, need to worry about mac os as well.
+
+	moveForward = true;
+
+	q.Translate(0, 0, -2);
 
 	for (int i = 0; i < 1966; ++i) {
 		indices.push_back(i);
@@ -164,6 +171,26 @@ void Update(const float deltaTime)
 	{
 		App::StopAudio("./Data/TestData/Test.wav");
 	}
+
+	//q.Translate(0, 0.002 * deltaTime, (-0.001) * deltaTime);
+	//q.Rotate(0.021 * deltaTime, 0.021 * deltaTime, 0);
+
+	float t = 0.45 / deltaTime;
+	t = (moveForward) ? t : (-t);
+
+	if (q.GetTranslation().z < -5) {
+		t *= 2.5;
+	}
+
+	if (q.GetTranslation().z > -0.55 && t > 0) {
+		moveForward = false;
+	}
+	else if (q.GetTranslation().z < -10 && t < 0) {
+		moveForward = true;
+	}
+
+	q.Translate(0, 0, t);
+
 }
 
 //------------------------------------------------------------------------
@@ -173,7 +200,8 @@ void Update(const float deltaTime)
 void Render()
 {
 	//v1.SetColour(0, 0, 0, 255);
-	p.Render(std::vector<Vertex>({v1, v2, v3, v4}), std::vector<uint32_t>({0, 1, 2, 1, 3, 2}), ModelAttributes());
+	//p.Render(std::vector<Vertex>({v1, v2, v3, v4}), std::vector<uint32_t>({0, 1, 2, 1, 3, 2}), ModelAttributes());
+	p.Render(q.GetVertices(), q.GetVertexIds(), q.GetModelAttributes());
 	//App::DrawTriangle(600.0f, 300.0f, -0.5f, 1, 650.0f, 400.0f, -0.5f, 1, 700.0f, 300.0f, -0.5f, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
 	//p.Render(randV, indices, ModelAttributes());
 	//------------------------------------------------------------------------

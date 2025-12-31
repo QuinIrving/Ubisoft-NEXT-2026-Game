@@ -16,8 +16,7 @@ Pipeline& Pipeline::GetInstance() {
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
 constexpr bool wireframe = true;
 void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) const {
-    // Pretend Camera and Lights, and model Matrix
-    Mat4<float> pretendModel = Mat4<float>::GetIdentity();
+    // Pretend Camera and Lights [DOING]
     Mat4<float> cameraView = Mat4<float>::GetIdentity();
 
     // Vertex -> MV applied to get View and World space coords new Vertex = VertexPrime
@@ -30,31 +29,30 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
     // Need to also worry about moving light into either view or keep in world space. (may even have it's own model matrix to apply to itself)
 
-    // ---- Object -> Model -> view transform Vertex Process ----
+    // ---- Object -> Model -> view transform Vertex Process ---- [DONE]
     std::vector<ViewVertex> viewVerts;
     viewVerts.reserve(indices.size());
 
     for (uint32_t i : indices) {
         const Vertex& v = vertices[i];
 
-
         // Apply MV properly with copy of v. -> new object: ViewVertex, which we use to assemble a triangle TriOut or Triangle?
-        viewVerts.push_back(ProcessVertex(v, pretendModel, cameraView));
+        viewVerts.push_back(ProcessVertex(v, modelAttributes.modelMatrix, cameraView));
     }
 
     int breakA = 1;
 
-    // ---- BACK FACE CULL [BYPASS] ----
-    // ---- View Frustrum rejection (triangle-level) [BYPASS] ----
+    // ---- BACK FACE CULL [TODO] ----
+    // ---- View Frustrum rejection (triangle-level) [TODO] ----
 
 
-    // ---- Screen-size Estimation [BYPASS] ----
+    // ---- Screen-size Estimation [TODO] ----
 
 
-    // ---- Dynamic tessellation [BYPASS] -> should output triangles, not vertices ---- (SHould take in triangles and output more triangles)
+    // ---- Dynamic tessellation [TODO] -> should output triangles, not vertices ---- (SHould take in triangles and output more triangles)
 
 
-    // ---- Displacement mapping [BYPASS] ----
+    // ---- Displacement mapping [TODO] ----
         // Re-compute normals
         // Re-test frustum
         // Kill triangles that got moved out (may need to worry about triangles that should also be moved in? not sure performance wise) (for moving in -> never resurrect dead triangles
@@ -63,10 +61,10 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
 
 
-    // ---- Vertex Shading & Lighting [BYPASS] ----
+    // ---- Vertex Shading & Lighting [TODO] ----
 
 
-    // ---- Apply Projection ----
+    // ---- Apply Projection ----[DONE]
     std::vector<ProjectionVertex> projectionVertices;
     projectionVertices.reserve(viewVerts.size());
     
@@ -75,20 +73,21 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
     }
     int breakB = 1;
 
-    // ---- ClipSpace Cull & near-plane clipping [BYPASS] -> do before perspective divide. ----
+    // ---- ClipSpace Cull & near-plane clipping [TODO] -> do before perspective divide. ----
 
 
-    // ---- Perspective Divide----
-    // ---- Viewport mapping ----
-        // Reject degenerate triangles/zero-area triangles [BYPASS]
+    // ---- Perspective Divide----[DONE]
+    // ---- Viewport mapping ----[DONE]
+        // Reject degenerate triangles/zero-area triangles [TODO]
     std::vector<ScreenSpaceVertex> finalVertices;
     finalVertices.reserve(projectionVertices.size());
     
     for (const ProjectionVertex& v : projectionVertices) {
         finalVertices.push_back(HomogenizeAndViewportMap(v));
     }
+    int breakC = 1;
 
-    // ---- Submit to API ----
+    // ---- Submit to API ---- [DONE]
     for (int i = 0; i < finalVertices.size(); i += 3) {
         SubmitTriangle(finalVertices[i], finalVertices[i + 1], finalVertices[i + 2], wireframe);
     }
@@ -123,10 +122,10 @@ ScreenSpaceVertex Pipeline::HomogenizeAndViewportMap(const ProjectionVertex& v) 
     float ndcZ = oldPos.z / w;
 
     float x = (ndcX + 1.f) * 0.5f;
-    float y = (ndcY + 1.f) * 0.5f;
+    float y = (1.f - ndcY) * 0.5f;
     
     Vec2<float> screenPos = {x * APP_VIRTUAL_WIDTH, y * APP_VIRTUAL_HEIGHT };
-    float z = ndcZ;
+    float z = ndcZ; // 0 - 1 right now, should make it so my projection matrix goes -1 <-> 1 instead fix later.
 
     return ScreenSpaceVertex(screenPos, z, w, v.GetColour()); // We transition to Vec3 colours here, may be able to do this earlier (or entirely) due to only vert colours not per fragment
 }
@@ -141,13 +140,11 @@ void Pipeline::SubmitTriangle(const ScreenSpaceVertex& v1, const ScreenSpaceVert
     auto pos3 = v3.GetScreenPosition();
     auto col3 = v3.GetColour();
     
-    /*
     App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth(), 1, pos2.x, pos2.y, v2.GetDepth(), 1, pos3.x, pos3.y, v3.GetDepth(), 1,
         col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, isWireframe);
-    */
     
-    App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth(), v1.GetW(), pos2.x, pos2.y, v2.GetDepth(), v2.GetW(), pos3.x, pos3.y, v3.GetDepth(), v3.GetW(),
-        col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, isWireframe);
+    /*App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth(), v1.GetW(), pos2.x, pos2.y, v2.GetDepth(), v2.GetW(), pos3.x, pos3.y, v3.GetDepth(), v3.GetW(),
+        col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, isWireframe);*/
     
 }
 

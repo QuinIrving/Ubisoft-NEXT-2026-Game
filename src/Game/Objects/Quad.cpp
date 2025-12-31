@@ -1,41 +1,43 @@
 #include "Quad.h"
 
-/*Quad::Quad(float width, float height) {
-	vertices.reserve(4);
-	vertexIds.reserve(6);
+Quad::Quad(float width, float height, float size, Vec4<float> colour) {
+	Scale(size, size, size);
+	m_mesh = QuadMesh(width, height, colour);
+}
 
-	float wOver2 = width / 2.f;
-	float hOver2 = height / 2.f;
+void Quad::Rotate(float x, float y, float z) {
+	//m_rotation.x = std::fmodf(m_rotation.x + x, 360.f);
+	//m_rotation.y = std::fmodf(m_rotation.y + y, 360.f);
+	//m_rotation.z = std::fmodf(m_rotation.z + z, 360.f);
+	Quaternion deltaRotation = Quaternion(x, y, z);
 
-	//vertices.push_back({ -wOver2, -hOver2, -1, {0, 0, 1}, {0, 0} });
-	m_vertices.push_back(Vertex({ -wOver2, -hOver2, -1 }, {}, { 0, 0, 1 }, {0, 0}));
-	vertices.push_back({ wOver2, -hOver2, -1, {0, 0, 1}, {1, 0} });
-	vertices.push_back({ -wOver2, hOver2,-1, {0, 0, 1}, {0, 1} });
-	vertices.push_back({ wOver2, hOver2, -1, {0, 0, 1}, {1, 1} });
+	m_delta *= deltaRotation;
+	m_delta.Normalize();
+}
 
-	vertexIds = { 0, 2, 1, 1, 2, 3 };
+void Quad::Scale(float x, float y, float z) {
+	m_scale.x *= x;
+	m_scale.y *= y;
+	m_scale.z *= z;
+}
 
-	for (int i = 0; i < vertexIds.size(); i += 3) {
-		Vec3<float> edge1 = vertices[vertexIds[i + 1]].GetPosition() - vertices[vertexIds[i]].GetPosition();
-		Vec3<float> edge2 = vertices[vertexIds[i + 2]].GetPosition() - vertices[vertexIds[i]].GetPosition();
+void Quad::Translate(float x, float y, float z) {
+	m_position.x += x;
+	m_position.y += y;
+	m_position.z += z;
+}
 
-		Vec2<float> dUV1 = vertices[vertexIds[i + 1]].GetUV() - vertices[vertexIds[i]].GetUV();
-		Vec2<float> dUV2 = vertices[vertexIds[i + 2]].GetUV() - vertices[vertexIds[i]].GetUV();
+ModelAttributes Quad::GetModelAttributes() {
+	ModelAttributes ma;
+	ma.material = material;
+	ma.modelMatrix = Mat4<float>::Scale(m_scale) * m_delta.GetRotationMatrix() * Mat4<float>::Translate(m_position);
+	return ma;
+}
 
-		float f = 1.0f / (dUV1.x * dUV2.y - dUV2.x * dUV1.y);
+std::vector<uint32_t>& Quad::GetVertexIds() {
+	return m_mesh.GetVertexIds();
+}
 
-		Vec3<float> tangent = (edge1 * dUV2.y - edge2 * dUV1.y) * f;
-		tangent = tangent.GetNormalized();
-		Vec3<float> bitangent = (edge1 * -dUV2.x + edge2 * dUV1.x) * f;
-		bitangent = bitangent.GetNormalized();
-
-		vertices[vertexIds[i]].SetTangent(tangent);
-		vertices[vertexIds[i]].SetTangentW((vertices[vertexIds[i]].GetNormal().CrossProduct(tangent).DotProduct(bitangent)) < 0.0f ? -1.0f : 1.0f);
-
-		vertices[vertexIds[i + 1]].SetTangent(tangent);
-		vertices[vertexIds[i + 1]].SetTangentW((vertices[vertexIds[i + 1]].GetNormal().CrossProduct(tangent).DotProduct(bitangent)) < 0.0f ? -1.0f : 1.0f);
-
-		vertices[vertexIds[i + 2]].SetTangent(tangent);
-		vertices[vertexIds[i + 2]].SetTangentW((vertices[vertexIds[i + 2]].GetNormal().CrossProduct(tangent).DotProduct(bitangent)) < 0.0f ? -1.0f : 1.0f);
-	}
-}*/
+std::vector<Vertex>& Quad::GetVertices() {
+	return m_mesh.GetVertices();
+}

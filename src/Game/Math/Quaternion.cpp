@@ -115,26 +115,6 @@ Mat4<float> Quaternion::GetRotationMatrix() const {
 	m[2][1] = 2 * (delta.y * delta.z + delta.w * delta.x);
 	m[2][2] = 2 * (delta.w * delta.w + delta.z * delta.z) - 1;
 
-	/*
-	float x = m_delta.x, y = m_delta.y, z = m_delta.z, w = m_delta.w;
-	float xx = x * x, yy = y * y, zz = z * z;
-	float xy = x * y, xz = x * z, yz = y * z;
-	float wx = w * x, wy = w * y, wz = w * z;
-
-	Mat4<float> m = Mat4<float>::GetIdentity();
-
-	m[0][0] = 1.0f - 2.0f * (yy + zz);
-	m[0][1] = 2.0f * (xy + wz);
-	m[0][2] = 2.0f * (xz - wy);
-
-	m[1][0] = 2.0f * (xy - wz);
-	m[1][1] = 1.0f - 2.0f * (xx + zz);
-	m[1][2] = 2.0f * (yz + wx);
-
-	m[2][0] = 2.0f * (xz + wy);
-	m[2][1] = 2.0f * (yz - wx);
-	m[2][2] = 1.0f - 2.0f * (xx + yy);
-	*/
 	return m;
 }
 

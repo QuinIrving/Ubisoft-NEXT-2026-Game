@@ -56,7 +56,7 @@
 #ifdef _DEBUG
 #define APP_RENDER_UPDATE_TIMES				true
 #else
-#define APP_RENDER_UPDATE_TIMES				true
+#define APP_RENDER_UPDATE_TIMES				false
 #endif
 
 #define FRAND	(static_cast <float> (rand()) / static_cast <float> (RAND_MAX))
