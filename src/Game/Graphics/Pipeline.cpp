@@ -6,6 +6,7 @@
 #include "ViewVertex.h"
 #include "ProjectionVertex.h"
 #include "ScreenSpaceVertex.h"
+#include "Triangle.h"
 
 Pipeline& Pipeline::GetInstance() {
     static Pipeline m_instance; // thread safe
@@ -42,7 +43,23 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
     int breakA = 1;
 
-    // ---- BACK FACE CULL [TODO] ----
+    std::vector<ViewVertex> viewVertsAfterCull;
+    viewVertsAfterCull.reserve(viewVerts.size());
+    // ---- BACK FACE CULL [DONE] ----
+    for (int i = 0; i < viewVerts.size(); i += 3) {
+        Vec3<float> faceNormal = Triangle::ComputeFaceNormal(viewVerts[i].GetViewPosition(), viewVerts[i + 1].GetViewPosition(), viewVerts[i + 2].GetViewPosition());
+
+        // Get our camera view:
+        Vec3<float> viewDir = viewVerts[i].GetViewPosition().GetNormalized();
+        float viewNormal = Vec3<float>::DotProduct(faceNormal, viewDir);
+
+        if (viewNormal > 0.f) { // perhaps with an epsilon added if need be.
+            continue;
+        }
+
+        // reaching here means it's a front-face:
+        viewVertsAfterCull.insert(viewVertsAfterCull.end(), {viewVerts[i], viewVerts[i + 1], viewVerts[i + 2]});
+    }
     // ---- View Frustrum rejection (triangle-level) [TODO] ----
 
 
@@ -66,9 +83,9 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
     // ---- Apply Projection ----[DONE]
     std::vector<ProjectionVertex> projectionVertices;
-    projectionVertices.reserve(viewVerts.size());
+    projectionVertices.reserve(viewVertsAfterCull.size());
     
-    for (const ViewVertex& v : viewVerts) {
+    for (const ViewVertex& v : viewVertsAfterCull) {
         projectionVertices.push_back(ProjectVertex(v));
     }
     int breakB = 1;
