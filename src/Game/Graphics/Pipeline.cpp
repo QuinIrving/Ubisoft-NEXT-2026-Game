@@ -45,6 +45,7 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
     std::vector<ViewVertex> viewVertsAfterCull;
     viewVertsAfterCull.reserve(viewVerts.size());
+    
     // ---- BACK FACE CULL [DONE] ----
     for (int i = 0; i < viewVerts.size(); i += 3) {
         Vec3<float> faceNormal = Triangle::ComputeFaceNormal(viewVerts[i].GetViewPosition(), viewVerts[i + 1].GetViewPosition(), viewVerts[i + 2].GetViewPosition());
@@ -60,7 +61,34 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
         // reaching here means it's a front-face:
         viewVertsAfterCull.insert(viewVertsAfterCull.end(), {viewVerts[i], viewVerts[i + 1], viewVerts[i + 2]});
     }
-    // ---- View Frustrum rejection (triangle-level) [TODO] ----
+    // ---- View Frustrum rejection (triangle-level) [DONE] ---- Essentially an early rejection, as not in clip-space
+    std::vector<ViewVertex> viewVertsAfterFrustum;
+    viewVertsAfterFrustum.reserve(viewVertsAfterCull.size());
+    
+    float hScale = m_yScale * m_aspectRatio;
+    for (int i = 0; i < viewVertsAfterCull.size(); i += 3) {
+        const Vec3<float>& v0 = viewVertsAfterCull[i].GetViewPosition();
+        const Vec3<float>& v1 = viewVertsAfterCull[i + 1].GetViewPosition();
+        const Vec3<float>& v2 = viewVertsAfterCull[i + 2].GetViewPosition();
+
+        // REJECT TOP/BOTTOM (Y-AXIS)
+        if (v0.y > -v0.z * hScale && v1.y > -v1.z * hScale && v2.y > -v2.z * hScale) { continue; }
+        if (v0.y < v0.z * hScale && v1.y < v1.z * hScale && v2.y < v2.z * hScale) { continue; }
+
+        // REJECT LEFT/RIGHT (X-AXIS)
+        if (v0.x > -v0.z * hScale && v1.x > -v1.z * hScale && v2.x > -v2.z * hScale) { continue; }
+        if (v0.x < v0.z * hScale && v1.x < v1.z * hScale && v2.x < v2.z * hScale) { continue; }
+
+        // REJECT NEAR/FAR (Z-AXIS)
+        char textBuffer[128];
+        snprintf(textBuffer, sizeof(textBuffer), "(v0, v1, v2) Z: (%f, %f, %f), (n, f): (%f, %f)", v0.z, v1.z, v2.z, -this->n, -this->f);
+        App::Print(10, APP_VIRTUAL_HEIGHT - 120 - (i * 10), textBuffer, 0.5f, 1.0f, 0.5f, GLUT_BITMAP_HELVETICA_10);
+        if (v0.z > -this->n && v1.z > -this->n && v2.z > -this->n) { continue; }
+        //if (v0.z > this->n && v1.z > this->n && v2.z > this->n) { continue; } // we do this instead of  -n to allow for displacement mapping to push vertices back into plane later,
+        if (v0.z < -this->f && v1.z < -this->f && v2.z < -this->f) { continue; }
+
+        viewVertsAfterFrustum.insert(viewVertsAfterFrustum.end(), { viewVertsAfterCull[i], viewVertsAfterCull[i + 1], viewVertsAfterCull[i + 2] });
+    }
 
 
     // ---- Screen-size Estimation [TODO] ----
@@ -83,9 +111,9 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
     // ---- Apply Projection ----[DONE]
     std::vector<ProjectionVertex> projectionVertices;
-    projectionVertices.reserve(viewVertsAfterCull.size());
+    projectionVertices.reserve(viewVertsAfterFrustum.size());
     
-    for (const ViewVertex& v : viewVertsAfterCull) {
+    for (const ViewVertex& v : viewVertsAfterFrustum) {
         projectionVertices.push_back(ProjectVertex(v));
     }
     int breakB = 1;
@@ -249,6 +277,7 @@ void Pipeline::SubmitTriangle(const ScreenSpaceVertex& v1, const ScreenSpaceVert
 
 void Pipeline::ResizeWindowProjection(float width, float height) {
     float aspectRatio = width / height;
+    m_aspectRatio = aspectRatio;
 
     m_projectionMatrix[0][0] = 1.f / (m_yScale * aspectRatio);
 }
