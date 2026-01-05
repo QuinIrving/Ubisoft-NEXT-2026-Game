@@ -25,9 +25,10 @@
 #include "Graphics/Pipeline.h"
 #include "Objects/Quad.h"
 #include <main.h>
+#include "Tessellation/TessellatedPipeline.h"
 
 
-Pipeline& p = Pipeline::GetInstance();
+TessellatedPipeline& p = TessellatedPipeline::GetInstance();
 
 //------------------------------------------------------------------------
 // Example data....

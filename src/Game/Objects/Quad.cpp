@@ -27,11 +27,9 @@ void Quad::Translate(float x, float y, float z) {
 	m_position.z += z;
 }
 
-ModelAttributes Quad::GetModelAttributes() {
-	ModelAttributes ma;
-	ma.material = material;
-	ma.modelMatrix = Mat4<float>::Scale(m_scale) * m_delta.GetRotationMatrix() * Mat4<float>::Translate(m_position);
-	return ma;
+const ModelAttributes& Quad::GetModelAttributes() {
+	m_attributes.modelMatrix = Mat4<float>::Scale(m_scale) * m_delta.GetRotationMatrix() * Mat4<float>::Translate(m_position);
+	return m_attributes;
 }
 
 std::vector<uint32_t>& Quad::GetVertexIds() {

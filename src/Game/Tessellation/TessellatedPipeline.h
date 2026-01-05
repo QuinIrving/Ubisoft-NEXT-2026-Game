@@ -1,25 +1,27 @@
 #pragma once
 #include <vector>
-#include "Vertex.h"
-#include "VertexOut.h"
-#include "VertexPostClip.h"
-#include "ViewVertex.h"
-#include "ProjectionVertex.h"
-#include "ScreenSpaceVertex.h"
-#include "ModelAttributes.h"
+#include "Graphics/Vertex.h"
+#include "Graphics/VertexOut.h"
+#include "Graphics/VertexPostClip.h"
+#include "Graphics/ViewVertex.h"
+#include "Graphics/ProjectionVertex.h"
+#include "Graphics/ScreenSpaceVertex.h"
+#include "Graphics/ModelAttributes.h"
 #include "Math/Mat4.h"
-#include "Camera.h"
+#include "Graphics/Camera.h"
+#include <AppSettings.h>
+#include "TriangleNode.h"
 
 /*
     Singleton (thread safe) Pipeline class for rendering.
     Handles vertices per mesh -> vertex shader -> clipping -> tessellation -> texture mapping & lighting -> call rasterization
 */
-class Pipeline {
+class TessellatedPipeline {
 public:
-    static Pipeline& GetInstance();
+    static TessellatedPipeline& GetInstance();
 
     // business logic -> probably some way to bind vertex shader, not sure if needed though.
-    void Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) const;
+    void Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes);
     
     ViewVertex ProcessVertex(const Vertex& v, const Mat4<float> M, const Mat4<float> V) const;
     ProjectionVertex ProjectVertex(const ViewVertex& v) const;
@@ -40,8 +42,8 @@ public:
 
     void ResizeWindowProjection(float width, float height);
 
-    Pipeline(Pipeline& other) = delete;
-    void operator=(const Pipeline&) = delete;
+    TessellatedPipeline(TessellatedPipeline& other) = delete;
+    void operator=(const TessellatedPipeline&) = delete;
 
     Camera camera;
 
@@ -51,6 +53,8 @@ protected:
     float m_aspectRatio;
     const float n{ 0.1 };
     const float f{ 1000 };
+
+    std::vector<TriangleNode> tessellateStack;
 
     Mat4<float> CreateProjectionMatrix() {
         m_aspectRatio = static_cast<float>(APP_VIRTUAL_WIDTH) / static_cast<float>(APP_VIRTUAL_HEIGHT);
@@ -65,8 +69,8 @@ protected:
             });
     }
     
-    Pipeline() = default;
-    ~Pipeline() {};
+    TessellatedPipeline() = default;
+    ~TessellatedPipeline() {};
     
 
     Mat4<float> m_projectionMatrix = CreateProjectionMatrix();

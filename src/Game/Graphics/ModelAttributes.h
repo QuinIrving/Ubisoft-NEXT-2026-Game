@@ -40,7 +40,13 @@ struct Material {
 };
 
 struct ModelAttributes {
+	static uint32_t currentNumObjects;
+
 	Mat4<float> modelMatrix;
 	//std::shared_ptr<Material> material; // Should setup our textures, and our materials on loadup, then each model can point to one
 	Material material; // for simplicity at the start I'll do this.
+
+	uint32_t uniqueObjectIndex; // This is so for each object created, it should be unique
+
+	ModelAttributes() { uniqueObjectIndex = currentNumObjects; currentNumObjects++; }
 };

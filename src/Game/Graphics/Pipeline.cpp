@@ -15,7 +15,7 @@ Pipeline& Pipeline::GetInstance() {
 }
 
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
-constexpr bool wireframe = false;
+constexpr bool wireframe = true;
 void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) const {
     // Pretend Camera and Lights [DOING]
     //Mat4<float> cameraView = Mat4<float>::GetIdentity();
@@ -92,9 +92,19 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
 
     // ---- Screen-size Estimation [TODO] ----
+    /*
+    Here is how I have been reading it. THe simplistic approach is in some way estimate the edge lengths in screen space
+    with some form of either applying the projection matrix to get screen size, or some form of estimate. Get the max edge
+    between the 3 vertices of the triangle given, and if it's too large, then we do a midpoint subidviision to go from 
+    1 tri -> 4 triangles, and do that a certain amount of times recursively. Let's see if there is a better algorithm
+    that is perhaps more performant, need to see.
 
+    ------- Reyes algorithms --------
+
+    */
 
     // ---- Dynamic tessellation [TODO] -> should output triangles, not vertices ---- (SHould take in triangles and output more triangles)
+        // Don't forget to cache LOD, and try to ensure not to have swimming/gaps in edges of shared triangles with different outer edge levels
 
 
     // ---- Displacement mapping [TODO] ----
@@ -150,7 +160,7 @@ ViewVertex Pipeline::ProcessVertex(const Vertex& v, const Mat4<float> M, const M
 
     Vec4<float> viewTangent = Vec4<float>(v.GetTangent(), 0) * M * V;
 
-    return ViewVertex(worldPos, viewPos, worldNormal, viewNormal, viewTangent, v.GetUV(), v.GetColour());
+    return ViewVertex(worldPos, viewPos, worldNormal, viewNormal, viewTangent, v.GetUV(), v.GetColour(), v.GetMeshIndex(), v.GetUniqueIndex());
 }
 
 ProjectionVertex Pipeline::ProjectVertex(const ViewVertex& v) const {

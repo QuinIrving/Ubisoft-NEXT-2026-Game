@@ -7,6 +7,9 @@
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ModelAttributes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Pipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -20,6 +23,24 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Objects\QuadMesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\LODMesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\LODNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TessellatedPipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TessellationContext.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TriangleMesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TriangleNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -85,6 +106,24 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Objects\QuadMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\LODMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\LODNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TessellatedPipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TessellationContext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TriangleMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TriangleNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
