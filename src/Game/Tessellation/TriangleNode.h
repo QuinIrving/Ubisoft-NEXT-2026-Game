@@ -4,35 +4,45 @@
 #include <string>
 #include "Math/Vec3.h"
 #include <Graphics/Vertex.h>
+#include <Graphics/ViewVertex.h>
+#include "TriangleContext.h"
 
 struct MeshPosition {
 	Vec3<float> position{};
 };
 
-struct TriangleContext { // Again temp idea for now just so we can easily access the stuff
-	std::vector<uint8_t> depthLevels; // index of base vertex and provides the depth level 
-	//std::unordered_map<std::pair<int, int>, int> edgeToTri; // only used for short time.
-	//std::vector<uint32_t> adjacencyTable; // initialize to total mesh triangle count with value -1. Should point to neighbour base index that is neighbour of longest edge.
-	std::unordered_map<uint64_t, std::vector<uint32_t>> adjacencyTable;
-	std::vector<Vertex> processedMesh;
-};
-
 // This is simply for the first pass, so we only interpolate the position, and don't need to worry about the rest, while we see how deep we need to go in terms of splitting
 struct TriangleNode { // This will hopefully be able to be used with both the base triangle node, as well as the split children of it.
+	TriangleNode() : nodeID(0), /*heapIndex(-1),*/ baseTriIdx(0), depth(0), v0(), v1(), v2() {};
+	
 	uint64_t nodeID; // Bitwise ID starts at 0.
-	Vec3<float> v0, v1, v2; // These should be sorted, since CCW, v2->v0 should contain longest edge. (need to rotate vertices to ensure that). This is the Mesh Position
+	int32_t neighbours[3] = { -1, -1, -1 }; // nodepool index values
+	ViewVertex v0, v1, v2;
 	uint32_t baseTriIdx; // 3 vertices, this v0: index * 3, v1: +1, v2: +2
-	int depth;
+	uint16_t depth;
+	bool isCulled = false; // in-case we finish processing all children, and a free-node that was culled wasn't re-used by a child so it's still in the node pool.
 
-	int64_t neighbourBaseTriangleIdx[3]; // -1 = invalid TriangleIdx. 0: v0->v1, 1: v1->v2, 2: v2->v0;
+	void SplitLongestEdge(TriangleContext& context);
+	int32_t SplitAndMatchNeighbour(TriangleContext& context, int32_t neighbourIdx);
 
-	//int longestEdgeIdx; // which edge is the longest edge.
-	//uint32_t neighbourVertexIdx[3]; // 0 is v0->v1, 1: v1->v2, 2: v2->v0 // OR should it be the neighbours ID rather than the base neighbour idx?
+	//Vec3<float> v0, v1, v2; // These should be sorted, since CCW, v2->v0 should contain longest edge. (need to rotate vertices to ensure that). This is the Mesh Position
+	//int64_t neighbourBaseTriangleIdx[3]; // -1 = invalid TriangleIdx. 0: v0->v1, 1: v1->v2, 2: v2->v0;
+	//uint8_t priority = 0;
+	//int32_t heapIndex = -1;
+	// This should be called when our neighbour doesn't have it's longest edge on the same longest edge as our own, so we can ask it to figure itself out to split first.
+	//void forceNeighbourSplit(TriangleContext& context, int32_t neighbourPoolIdx, int currentPriority);
+
+	
 };
 
 uint64_t MakeEdgeKey(uint32_t a, uint32_t b);
 
 TriangleContext PreProcessMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
+
+
+
+
+//float CalculateSSE(Vec3<float> v0, Vec3<float> v2);
 
 /*
 TessellationMesh PreProcessMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices) {

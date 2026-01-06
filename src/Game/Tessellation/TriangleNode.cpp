@@ -1,5 +1,37 @@
 #include "TriangleNode.h"
 
+/*
+void TriangleNode::forceNeighbourSplit(TriangleContext& context, int32_t neighbourPoolIdx, int currentPriority) {
+	TriangleNode& neighbour = context.nodePool[neighbourPoolIdx];
+
+	// check if the neighbour even exists in our heap (if not then it's already been split)
+	if (neighbour.heapIndex == -1) {
+		return;
+	}
+
+	int higherPriority = priority + 1;
+	context.updatePriority(neighbourPoolIdx, higherPriority);
+}*/
+
+
+void TriangleNode::SplitLongestEdge(TriangleContext& context) {
+	// Split our node into 2 children nodes, with new vertex midpoint in the middle of edge v2->v0, ensure we properly rotate our childrens vertices, so their v2, v0 don't include the midpoint.
+	// Should put both into work queue
+
+	// nice interpolation function for a view vertex would be nice.
+	//ViewVertex m = ViewVertex::EdgeMidpointInterpolate();
+
+}
+
+int32_t TriangleNode::SplitAndMatchNeighbour(TriangleContext& context, int32_t neighbourIdx) {
+	TriangleNode& neighbour = context.nodePool[neighbourIdx];
+	// SHould only put the non-matching node into work queue, other one is returned to be added to the stack.
+
+	// Split, child 1 goes to re-use parent node, and goes back to work queue
+	// Child 2 checks for free-nodes if none, then creates new node, and is returned to be added to the urgent stack
+	// Don't forget to update neighbour references to us as well for all 3 edges.
+}
+
 uint64_t MakeEdgeKey(uint32_t a, uint32_t b) {
 	if (b < a) {
 		std::swap(a, b);
@@ -11,14 +43,9 @@ uint64_t MakeEdgeKey(uint32_t a, uint32_t b) {
 
 TriangleContext PreProcessMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices) {
 	// Take in a mesh in model space, and want to pre-determine the general neighbour structure, and re-arrange the vertices as necessary to fit it via rotation
-
 	TriangleContext context;
-	context.depthLevels = std::vector<uint8_t>(indices.size() / 3, 0);
-	//context.adjacencyTable = std::vector<uint32_t>(indices.size() / 3, -1);
+	//context.depthLevels = std::vector<uint8_t>(indices.size() / 3, 0);
 	context.processedMesh.reserve(indices.size());
-
-	// 2 mesh indices of the edges for a triangle, and pass in it's triangle index for storing once neighbour is found
-	//std::unordered_map<uint64_t, std::vector<uint32_t>> allEdgesToTris;
 
 	// Pre-process the triangles I guess;
 	for (int i = 0; i < indices.size(); i += 3) {

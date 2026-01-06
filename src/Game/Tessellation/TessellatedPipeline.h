@@ -28,6 +28,7 @@ public:
     ScreenSpaceVertex HomogenizeAndViewportMap(const ProjectionVertex& v) const;
     void SubmitTriangle(const ScreenSpaceVertex& v1, const ScreenSpaceVertex& v2, const ScreenSpaceVertex& v3, bool isWireframe) const;
     
+    float CalculateSSE(Vec3<float> v0, Vec3<float> v2) const;
     
     //VertexOut VertexShader(const Vertex& v, const ModelAttributes& MA, const Mat4<float>& V, const Mat4<float>& P);
 

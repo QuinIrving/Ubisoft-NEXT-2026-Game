@@ -5,6 +5,7 @@
 
 class ViewVertex {
 public:
+	ViewVertex() = default;
 	ViewVertex(Vec3<float> worldPos, Vec3<float> viewPos, Vec3<float> worldNormal, Vec3<float> viewNormal, Vec3<float> viewTangent, Vec2<float> uv, Vec4<float> colour, uint32_t meshIndex, uint32_t uniqueIndex)
 		: m_worldPosition(worldPos), m_viewPosition(viewPos), m_worldNormal(worldNormal), m_viewNormal(viewNormal), m_viewTangent(viewTangent), m_UV(uv), m_colour(colour), m_meshIndex(meshIndex), m_uniqueIndex(uniqueIndex) {};
 
@@ -24,6 +25,8 @@ public:
 
 	void SetMeshIndex(uint32_t meshIndex) { m_meshIndex = meshIndex; }
 	void SetUniqueIndex(uint32_t index) { m_uniqueIndex = index; }
+
+	static ViewVertex EdgeMidpointInterpolate(ViewVertex& a, ViewVertex& b);
 
 private:
 	Vec3<float> m_worldPosition{};

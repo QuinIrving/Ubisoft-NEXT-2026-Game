@@ -3,6 +3,8 @@
 #include "Graphics/Triangle.h"
 //#include "TessellationContext.h"
 #include "TriangleNode.h"
+#include <main.h>
+#include <queue>
 
 TessellatedPipeline& TessellatedPipeline::GetInstance() {
     static TessellatedPipeline m_instance; // thread safe
@@ -37,6 +39,7 @@ TessellatedPipeline& TessellatedPipeline::GetInstance() {
 constexpr bool wireframe = true;
 constexpr float errorThreshold = 8.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
 // Should be a pipeline specific member variable that can be changed based on setting chose ^.
+constexpr float errorThresholdSq = errorThreshold * errorThreshold;
 
 void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) {
     // Pretend Camera and Lights [DOING]
@@ -53,7 +56,7 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
     // Need to also worry about moving light into either view or keep in world space. (may even have it's own model matrix to apply to itself)
 
     // Pre-process triangle mesh (should be done on object load/read first-time, or first time creating a defined object such as a Quad. (shouldn't be every frame like I do here)
-    auto map = PreProcessMesh(vertices, indices);
+    auto context = PreProcessMesh(vertices, indices);
     int breakO;
 
     // ---- Object -> Model -> view transform Vertex Process ---- [DONE]
@@ -66,84 +69,283 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
         // Apply MV properly with copy of v. -> new object: ViewVertex, which we use to assemble a triangle TriOut or Triangle?
         viewVerts.push_back(ProcessVertex(v, modelAttributes.modelMatrix, camera.GetViewMatrix()));
     }*/
-    for (const Vertex& v : map.processedMesh) {
+    for (const Vertex& v : context.processedMesh) {
         // Apply MV properly with copy of v. -> new object: ViewVertex, which we use to assemble a triangle TriOut or Triangle?
         viewVerts.push_back(ProcessVertex(v, modelAttributes.modelMatrix, camera.GetViewMatrix()));
     }
 
-    tessellateStack.reserve(map.processedMesh.size() / 3);
-    tessellateStack.clear();
+    //std::priority_queue<int> t;
+    
 
+    //tessellateStack.reserve(context.processedMesh.size() / 3);
+    //tessellateStack.clear();
+
+    context.nodePool.reserve(context.processedMesh.size() / 3);
+    context.urgentStack.reserve(16); // Just a baseline to initialize some simple memory, shouldn't really reach this large of a chain too often.
+    //context.workQueue.reserve(context.processedMesh.size());
+    //context.heap.reserve(context.processedMesh.size() / 3);
+
+
+
+    // HERE WE SHOULD FIRST STRESS TEST OUR HEAP AND NODES. TO ENSURE WE PROCESS THEM SMOOTHLY IN A TYPICAL USE CASE!
+    for (int i = 0; i < 255; i++) {
+        TriangleNode node = TriangleNode();
+        node.baseTriIdx = i;
+        node.nodeID = static_cast<uint64_t>(i + 1) << 32;
+        node.neighbours[0] = i - 1;
+        node.neighbours[1] = i + 1;
+        node.neighbours[2] = i + 2;
+
+        if (i > 250) {
+            node.neighbours[1] = 0;
+            node.neighbours[2] = 1;
+        }
+
+        context.nodePool.push_back(node); // A lot of optimizations by keeping the nodePool and workQueue out as a pipeline object that each render can utilize, although,
+        // need to worry about parallelization then
+        context.workQueue.push_back({ i, static_cast<uint64_t>(node.baseTriIdx + 1) << 32 }); // 0 nodeID should be null/invalid node.
+        //context.workQueue.push_back({ static_cast<int32_t>(i), i, 0 });
+        
+    }
+    
+    
+
+    int t = 0;
+
+
+    /* UNCOMMENT AND CHANGE TO USE OUR NODEPOOL and WORKQUEUE!!
     // Create my base TriangleNodes via the ViewVerts given.
     for (int i = 0; i < viewVerts.size(); i += 3) {
-        TriangleNode node;
+        TriangleNode node = TriangleNode();
         node.depth = 0;
         node.baseTriIdx = i / 3;
-        //node.nodeID = ?
-        node.v0 = viewVerts[i].GetViewPosition();
-        node.v1 = viewVerts[i + 1].GetViewPosition();
-        node.v2 = viewVerts[i + 2].GetViewPosition();
+        node.nodeID = static_cast<uint64_t>(node.baseTriIdx) << 32; // << 1 | 0 for left child, << 1 | 1 for right child.
+        //node.v0 = viewVerts[i].GetViewPosition();
+        //node.v1 = viewVerts[i + 1].GetViewPosition();
+        //node.v2 = viewVerts[i + 2].GetViewPosition();
+        node.v0 = viewVerts[i];
+        node.v1 = viewVerts[i + 1];
+        node.v2 = viewVerts[i + 2];
 
         uint32_t mIdx0 = viewVerts[i].GetMeshIndex();
         uint32_t mIdx1 = viewVerts[i + 1].GetMeshIndex();
         uint32_t mIdx2 = viewVerts[i + 2].GetMeshIndex();
 
         //node.neighbourBaseTriangleIdx[0] = -1;
+        node.neighbours[0] = -1;
+        node.neighbours[1] = -1;
+        node.neighbours[2] = -1;
+
         uint64_t key = MakeEdgeKey(mIdx0, mIdx1);
-        if (map.adjacencyTable[key].size() == 1) {
-            node.neighbourBaseTriangleIdx[0] = -1;
-        }
-        else {
-            for (uint32_t a : map.adjacencyTable[key]) {
-                if (a != node.baseTriIdx) {
-                    node.neighbourBaseTriangleIdx[0] = a;
-                    break;
-                }
+        for (uint32_t a : context.adjacencyTable[key]) {
+            if (a != node.baseTriIdx) {
+                node.neighbours[0] = a;
+                break;
             }
         }
 
         key = MakeEdgeKey(mIdx1, mIdx2);
-        if (map.adjacencyTable[key].size() == 1) {
-            node.neighbourBaseTriangleIdx[1] = -1;
-        }
-        else {
-            for (uint32_t a : map.adjacencyTable[key]) {
-                if (a != node.baseTriIdx) {
-                    node.neighbourBaseTriangleIdx[1] = a;
-                    break;
-                }
+        for (uint32_t a : context.adjacencyTable[key]) {
+            if (a != node.baseTriIdx) {
+                node.neighbours[1] = a;
+                break;
             }
         }
 
         key = MakeEdgeKey(mIdx2, mIdx0);
-        if (map.adjacencyTable[key].size() == 1) {
-            node.neighbourBaseTriangleIdx[2] = -1;
-        }
-        else {
-            for (uint32_t a : map.adjacencyTable[key]) {
-                if (a != node.baseTriIdx) {
-                    node.neighbourBaseTriangleIdx[2] = a;
-                    break;
-                }
+        for (uint32_t a : context.adjacencyTable[key]) {
+            if (a != node.baseTriIdx) {
+                node.neighbours[2] = a;
+                break;
             }
         }
 
+        context.nodePool.push_back(node);
+        context.pushNode(node.baseTriIdx);
+    }*/
 
-        tessellateStack.push_back(node);
+    int checkContext = 1;
+
+    // Flow should be:
+    /*
+    Pop from node queue, if wants to split check if neighbour has same longest edge, if so then push itself and neighbour onto stack and set global flag toForceSplit to true.
+    If not, then push to stack, and begin processing stack, keeping on pushing onto stack the new neighbour until we find one that shares the same longest-edge and set that global flag.
+    Finally once we have the flag set to true and we process an element from a stack, do the split and replace/update the parent node to contain one of the children, while the other child
+    gets added to the back of the nodePool, add the children indices to the back of the queue.
+    Continue until stack is empty, then continue on the queue and set the flag to false.
+    Also going to add in cull flags when processing the nodes (maybe before even force splitting, that way we could tell our neighbour it's still safe but remove it from our list)
+    Those cull "flags" in reality just set the node to being culled (so if it gets attempted to processed again later we can skip it),
+    and will have it's index added to a list/stack of freenodes, which a child getting split that isn't going into the parent can claim first, only when that list is empty,
+    does it then add a new node. Don't forget to update the base triidx (<- only for previously culled nodes) and depth (for both previously culled, and for old parents)
+    */
+
+    bool forceSplit = false;
+    while (!context.workQueue.empty()) {
+        while (!context.urgentStack.empty()) {
+            WorkItem work = context.urgentStack.back();
+            TriangleNode& node = context.nodePool[work.nodeIdx];
+
+            // Check if we are able to begin unwinding our work
+            if (forceSplit) {
+                context.urgentStack.pop_back();
+
+                // Do our split on our node, re-use our parent, update our neighbours, and check to see if there are any free nodes, if so the 2nd child can use it, else make a new child
+                node.SplitLongestEdge(context);
+                continue;
+            }
+
+            // check if our neighbour is invalid triangle, then we can just force split next turn
+            if (node.neighbours[2] == -1) {
+                forceSplit = true;
+                continue;
+            }
+
+            TriangleNode& neighbour = context.nodePool[node.neighbours[2]];
+
+            if (TriangleContext::HaveSameLongestEdge(node, neighbour)) {
+                // Technically, since let's say A depends on B, but B depends on C and vice versa there. Then if that's the case, we first must split
+                // B & C, and then the child of B whose edge is the same as A now should be on the stack to be force split instead.
+                //context.urgentStack.push_back({ node.neighbours[2], neighbour.nodeID });
+                context.urgentStack.pop_back();
+
+                // Neighbour split, add it's children to the queue, we split, one of the children to the queue, other to top of stack that matches same longest edge as item currently in it
+                neighbour.SplitLongestEdge(context);
+                int32_t childIdx = node.SplitAndMatchNeighbour(context, context.urgentStack.back().nodeIdx);
+                context.urgentStack.push_back({childIdx, context.nodePool[childIdx].nodeID});
+                forceSplit = true;
+                continue;
+            }
+
+            // If they don't share the same longest edge, need to keep going down the triangle dependency chain
+            context.urgentStack.push_back({ node.neighbours[2], neighbour.nodeID });
+            continue;
+        }
+        forceSplit = false;
+
+        WorkItem newWork = context.workQueue.front();
+        context.workQueue.pop_front();
+
+        TriangleNode& node = context.nodePool[newWork.nodeIdx];
+
+        // check if this is old queued node, if so we can safely skip re-processing it.
+        if (node.nodeID != newWork.nodeID) {
+            continue;
+        }
+
+        // CULL CHECKS IF WE WANT HERE!
+
+        // END CULL CHECKS
+
+
+        bool shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition()) > errorThresholdSq;
+
+        // node in the nodepool seems to be fine, 
+        if (!shouldSplit) {
+            continue;
+        }
+
+        // check if our longest edge neighbour is no valid triangle, if so then it's safe to split ourselves
+        if (node.neighbours[2] == -1) {
+            context.urgentStack.push_back(newWork);
+            forceSplit = true;
+            continue;
+        }
+
+        TriangleNode& neighbourNode = context.nodePool[node.neighbours[2]];
+        forceSplit = TriangleContext::HaveSameLongestEdge(node, neighbourNode);
+
+        // If we reach here, we know our node needs to split, and therefore so does the neighbour. If forceSplit is false here, then it means our neighbour has a different longest edge than us
+        // and therefore, should keep going down a dependency chain until a diamond is found.
+        context.urgentStack.push_back(newWork);
+        context.urgentStack.push_back({ node.neighbours[2], neighbourNode.nodeID });
+        continue;
     }
 
-    // First-Pass tessellate to find how far we should maximally split depth for each triangle node.
-    while (!tessellateStack.empty()) {
-        TriangleNode node = tessellateStack.back();
-        tessellateStack.pop_back();
+    // At this point should be able to go through the node pool and process each vertex as needed, as long as the flag is good.
+    int tester = 0;
 
-        // check the nodes view edges, if any of them are larger than the threshold, then split. 
-        // Longest edge for the children is the edge not having the midpoint new vertex.
-    }
+            // First-Pass tessellate to find how far we should maximally split depth for each triangle node.
+            //while (!tessellateStack.empty()) {
+            //    TriangleNode node = tessellateStack.back();
+            //    tessellateStack.pop_back();
+
+                // Need to check if neighbour is good, takes O(log n) steps to get the neighbour given what we have.
+                // Might want a faster way to access a neighbour, something like a cache from neighbour vertex, that contains it's lowest depth, that way we could potentially use that in most scenarios
+                // of retrieving, except when it's further ahead
+            //    int64_t longNeighbour = node.neighbourBaseTriangleIdx[2];
+
+            //    bool shouldSplit = CalculateSSE(node.v0, node.v2) > errorThresholdSq;
+
+                // Our long-edge neighbour should be no triangle then, so the edge of the mesh, should be able to simply split if we want.
+                //if (longNeighbour == -1) {
+                    // do Split check, then split
+                    //continue;
+                //}
+
+                /*
+                    What I know:
+                        - If we have a neighbour B on our longest edge, and at this depth it has a different longest edge, then (as long as we keep on creating children using the rotation rule)
+                            the childrens longest edge after split should be our longest edge guaranteed.
+                        - We can check if they have the same longest edge by checking if either:
+                            - neighbourV0 == ourV0 && neighbourV2 == ourV2
+                            - OR: neighbourV2 == ourV0 && neighbourV0 == ourV2
+                        - if either of ^ statements are true, we share the same long edge as our neighbour and both can be split.
+                        - If not, again we can add in the neighbour (after reconstructing potentially?) and after it splits, it's children and our node can split.
+
+                        
+                */
+
+
+                /*
+                // Check if neighbour is behind us in-depth.
+                if (context.depthLevels[longNeighbour] < node.depth) {
+                    // We can't split yet, so we must increase neighbours level and 
+
+                    continue;
+                } // Check if our node is supposed to force split
+                else if (node.depth < context.depthLevels[longNeighbour]) {
+                    continue;
+                }
+
+
+                if (node.depth == 0) {
+                    uint32_t neighbourMIdx0 = viewVerts[longNeighbour * 3].GetMeshIndex();
+                    uint32_t neighourMIdx2 = viewVerts[(longNeighbour * 3) + 2].GetMeshIndex();
+                    bool sharesSameEdge = false;
+
+
+                    // check edge key to see if we are within the same triangle, if so we can simply split. Else we need to tell neighbour to check and split.
+                    for (uint32_t tIdx : context.adjacencyTable[MakeEdgeKey(neighbourMIdx0, neighourMIdx2)]) {
+                        if (tIdx == node.baseTriIdx) {
+                            sharesSameEdge = true;
+                            break;
+                        }
+                    }
+
+                    if (!sharesSameEdge) {
+                        // push neighbour onto stack to do it's work first.
+
+                        continue;
+                    }
+
+                    // They share the same edge, so we can split, and also tell it to split by adding to our depth level.
+                }*/
+        
+
+                //CalculateSSE(v0, v2) -> provides us with a squared value if I'm not mistaken, need to check threshold squared.
+
+                // If we reach here, it means the depth are equal, so we do our regular threshold check (check the nodes view edges, if any of them are larger than the threshold), and if we must check then we check if the neighbour can also split
+                // If the neighbour can split, we update it's level, we may need to in this scenario and others if the neighbour must be split first, push the neighbour onto the stack after reconstructing
+                // it to our level and position using the bitID, that way we can wait for it to work before we re-do ours (so push that re-constructed neighbour after we already push ourselves back on
+                // so we can properly wait for it to work.
+                // 
+                // When it's our turn to potentially split, we create our children.
+                // Longest edge for the children is the edge not having the midpoint new vertex.
+            //}
 
     
-    // Second-pass Tessellate, go down to the depth of each depth level we have for each node, and interpolate all of the ViewVertex values,
-    // ensure to also properly backface-cull and frustum cull early here to reduce triangle tessellation at this stage.
+            // Second-pass Tessellate, go down to the depth of each depth level we have for each node, and interpolate all of the ViewVertex values,
+            // ensure to also properly backface-cull and frustum cull early here to reduce triangle tessellation at this stage.
     int test = 2;
 
 
@@ -328,6 +530,22 @@ void TessellatedPipeline::SubmitTriangle(const ScreenSpaceVertex& v1, const Scre
     /*App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth(), v1.GetW(), pos2.x, pos2.y, v2.GetDepth(), v2.GetW(), pos3.x, pos3.y, v3.GetDepth(), v3.GetW(),
         col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, isWireframe);*/
     
+}
+
+float TessellatedPipeline::CalculateSSE(Vec3<float> v0, Vec3<float> v2) const {
+    float edgeLenSq = (v2 - v0).GetMagnitudeSquared();
+
+    Vec3 mid = (v2 + v0) * 0.5f;
+    float distSq = mid.DotProduct(mid);
+    if (distSq < EPSILON) {
+        distSq = EPSILON;
+    }
+
+    // Could move some of this focal stuff out to be calculated and recalcualted on resize of window
+    float focalLenSq = (static_cast<float>(WINDOW_HEIGHT) / 2.f) / m_yScale;
+    focalLenSq *= focalLenSq;
+
+    return (edgeLenSq / distSq) * focalLenSq;
 }
 
     /* Input assembler(is this function)
