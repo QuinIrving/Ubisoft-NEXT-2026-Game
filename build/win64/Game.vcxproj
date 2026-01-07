@@ -404,6 +404,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ModelAttributes.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Pipeline.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Texture.cpp" />
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ViewVertex.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Math\Quaternion.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Objects\Quad.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Objects\QuadMesh.cpp" />

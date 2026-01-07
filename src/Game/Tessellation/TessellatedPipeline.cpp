@@ -37,7 +37,7 @@ TessellatedPipeline& TessellatedPipeline::GetInstance() {
 
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
 constexpr bool wireframe = true;
-constexpr float errorThreshold = 8.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
+constexpr float errorThreshold = 108.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
 // Should be a pipeline specific member variable that can be changed based on setting chose ^.
 constexpr float errorThresholdSq = errorThreshold * errorThreshold;
 
@@ -63,66 +63,22 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
     std::vector<ViewVertex> viewVerts;
     viewVerts.reserve(indices.size());
 
-    /*for (uint32_t i : indices) {
-        const Vertex& v = vertices[i];
-
-        // Apply MV properly with copy of v. -> new object: ViewVertex, which we use to assemble a triangle TriOut or Triangle?
-        viewVerts.push_back(ProcessVertex(v, modelAttributes.modelMatrix, camera.GetViewMatrix()));
-    }*/
     for (const Vertex& v : context.processedMesh) {
         // Apply MV properly with copy of v. -> new object: ViewVertex, which we use to assemble a triangle TriOut or Triangle?
         viewVerts.push_back(ProcessVertex(v, modelAttributes.modelMatrix, camera.GetViewMatrix()));
     }
 
-    //std::priority_queue<int> t;
-    
-
-    //tessellateStack.reserve(context.processedMesh.size() / 3);
-    //tessellateStack.clear();
-
     context.nodePool.reserve(context.processedMesh.size() / 3);
     context.urgentStack.reserve(16); // Just a baseline to initialize some simple memory, shouldn't really reach this large of a chain too often.
-    //context.workQueue.reserve(context.processedMesh.size());
-    //context.heap.reserve(context.processedMesh.size() / 3);
 
-
-
-    // HERE WE SHOULD FIRST STRESS TEST OUR HEAP AND NODES. TO ENSURE WE PROCESS THEM SMOOTHLY IN A TYPICAL USE CASE!
-    for (int i = 0; i < 255; i++) {
-        TriangleNode node = TriangleNode();
-        node.baseTriIdx = i;
-        node.nodeID = static_cast<uint64_t>(i + 1) << 32;
-        node.neighbours[0] = i - 1;
-        node.neighbours[1] = i + 1;
-        node.neighbours[2] = i + 2;
-
-        if (i > 250) {
-            node.neighbours[1] = 0;
-            node.neighbours[2] = 1;
-        }
-
-        context.nodePool.push_back(node); // A lot of optimizations by keeping the nodePool and workQueue out as a pipeline object that each render can utilize, although,
-        // need to worry about parallelization then
-        context.workQueue.push_back({ i, static_cast<uint64_t>(node.baseTriIdx + 1) << 32 }); // 0 nodeID should be null/invalid node.
-        //context.workQueue.push_back({ static_cast<int32_t>(i), i, 0 });
-        
-    }
-    
-    
-
-    int t = 0;
-
-
-    /* UNCOMMENT AND CHANGE TO USE OUR NODEPOOL and WORKQUEUE!!
     // Create my base TriangleNodes via the ViewVerts given.
     for (int i = 0; i < viewVerts.size(); i += 3) {
+        // SHOULD DO OUR INITIAL BACKFACE AND FRUSTUM CULLING IN HERE, BEFORE WE PUSH BACK TO NOT EVEN ADD IT TO OUR LIST OF NODES.
+
         TriangleNode node = TriangleNode();
         node.depth = 0;
         node.baseTriIdx = i / 3;
-        node.nodeID = static_cast<uint64_t>(node.baseTriIdx) << 32; // << 1 | 0 for left child, << 1 | 1 for right child.
-        //node.v0 = viewVerts[i].GetViewPosition();
-        //node.v1 = viewVerts[i + 1].GetViewPosition();
-        //node.v2 = viewVerts[i + 2].GetViewPosition();
+        node.nodeID = 1;
         node.v0 = viewVerts[i];
         node.v1 = viewVerts[i + 1];
         node.v2 = viewVerts[i + 2];
@@ -161,8 +117,8 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
         }
 
         context.nodePool.push_back(node);
-        context.pushNode(node.baseTriIdx);
-    }*/
+        context.workQueue.push_back({static_cast<int32_t>(node.baseTriIdx), node.baseTriIdx, node.nodeID}); // COULD BE AN ISSUE LATER WITH OUR POOL, MIGHT NEED A BETTER WAY FOR -1.
+    }
 
     int checkContext = 1;
 
@@ -185,12 +141,40 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
             WorkItem work = context.urgentStack.back();
             TriangleNode& node = context.nodePool[work.nodeIdx];
 
+            // May need to do cull work here
             // Check if we are able to begin unwinding our work
             if (forceSplit) {
                 context.urgentStack.pop_back();
 
-                // Do our split on our node, re-use our parent, update our neighbours, and check to see if there are any free nodes, if so the 2nd child can use it, else make a new child
-                node.SplitLongestEdge(context);
+                // This means neighbour on this edge is invalid and we don't need to diamond split, only do a split on itself
+                if (node.neighbours[2] == -1) {
+                    if (context.urgentStack.empty()) {
+                        // if the stack is now empty, it means there was only us on the stack, so we can simply split ourselves on that edge, and get out
+                        // split this node and push to work queue
+                        TriangleNode::SingleSplitAndMatchNeighbour(context, work.nodeIdx, -1);
+                    }
+                    else {
+                        // stack is not empty, so we have a dependency waiting for one of our 2 childs (specifically the one matching the other's edge.
+                        // Split this node and add the 1 child to the stack that is the same longest edge as whats currently on the back
+                        TriangleNode::SingleSplitAndMatchNeighbour(context, work.nodeIdx, context.urgentStack.back().nodeIdx);
+                    }
+                    continue;
+                }
+
+                WorkItem dependentWork = context.urgentStack.back();
+                TriangleNode& dependentNode = context.nodePool[dependentWork.nodeIdx];
+                context.urgentStack.pop_back();
+
+                // if it's empty, it means we don't actually have to push anything onto the stack, instead all go to work queue
+                if (context.urgentStack.empty()) {
+                    // split 4 and push to work queue
+                    TriangleNode::DiamondSplit(context, work.nodeIdx, dependentWork.nodeIdx, -1);
+                    continue;
+                }
+
+                //otherwise, split on all 4 nodes and Dependent node is the node we are actually going to have 1 of the children matching the longest edge of the node at the back of the stack
+                // split 4, and push 1 of the dependentNode's child's onto the stack that has the same longest edge as whats currently on the back.
+                TriangleNode::DiamondSplit(context, work.nodeIdx, dependentWork.nodeIdx, context.urgentStack.back().nodeIdx);
                 continue;
             }
 
@@ -205,20 +189,13 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
             if (TriangleContext::HaveSameLongestEdge(node, neighbour)) {
                 // Technically, since let's say A depends on B, but B depends on C and vice versa there. Then if that's the case, we first must split
                 // B & C, and then the child of B whose edge is the same as A now should be on the stack to be force split instead.
-                //context.urgentStack.push_back({ node.neighbours[2], neighbour.nodeID });
-                context.urgentStack.pop_back();
-
-                // Neighbour split, add it's children to the queue, we split, one of the children to the queue, other to top of stack that matches same longest edge as item currently in it
-                neighbour.SplitLongestEdge(context);
-                int32_t childIdx = node.SplitAndMatchNeighbour(context, context.urgentStack.back().nodeIdx);
-                context.urgentStack.push_back({childIdx, context.nodePool[childIdx].nodeID});
+                context.urgentStack.push_back({ node.neighbours[2], neighbour.baseTriIdx, neighbour.nodeID });
                 forceSplit = true;
                 continue;
             }
 
             // If they don't share the same longest edge, need to keep going down the triangle dependency chain
-            context.urgentStack.push_back({ node.neighbours[2], neighbour.nodeID });
-            continue;
+            context.urgentStack.push_back({ node.neighbours[2], neighbour.baseTriIdx, neighbour.nodeID });
         }
         forceSplit = false;
 
@@ -228,7 +205,7 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
         TriangleNode& node = context.nodePool[newWork.nodeIdx];
 
         // check if this is old queued node, if so we can safely skip re-processing it.
-        if (node.nodeID != newWork.nodeID) {
+        if (node.nodeID != newWork.nodeId || node.baseTriIdx != newWork.baseTriIdx) {
             continue;
         }
 
@@ -244,20 +221,31 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
             continue;
         }
 
+        // can't process the node anymore.
+        if (node.depth >= 64) {
+            continue;
+        }
+
         // check if our longest edge neighbour is no valid triangle, if so then it's safe to split ourselves
         if (node.neighbours[2] == -1) {
             context.urgentStack.push_back(newWork);
+            //singleSplit = true; // this tells it we have no neighbour to worry about so don't worry about an empty node
             forceSplit = true;
             continue;
         }
 
         TriangleNode& neighbourNode = context.nodePool[node.neighbours[2]];
+        // If our neighbour is at depth 64, we can't split anymore.
+        if (neighbourNode.depth >= 64) {
+            continue;
+        }
+
         forceSplit = TriangleContext::HaveSameLongestEdge(node, neighbourNode);
 
         // If we reach here, we know our node needs to split, and therefore so does the neighbour. If forceSplit is false here, then it means our neighbour has a different longest edge than us
         // and therefore, should keep going down a dependency chain until a diamond is found.
         context.urgentStack.push_back(newWork);
-        context.urgentStack.push_back({ node.neighbours[2], neighbourNode.nodeID });
+        context.urgentStack.push_back({ node.neighbours[2], neighbourNode.baseTriIdx, neighbourNode.nodeID });
         continue;
     }
 
@@ -435,7 +423,7 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
                     // Don't forget to cache LOD, and try to ensure not to have swimming/gaps in edges of shared triangles with different outer edge levels
                 */
 
-    /*
+    
     // ---- Displacement mapping [TODO] ----
         // Re-compute normals
         // Re-test frustum
@@ -450,11 +438,17 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
     
     // ---- Apply Projection ----[DONE]
     std::vector<ProjectionVertex> projectionVertices;
-    projectionVertices.reserve(viewVertsAfterFrustum.size());
-    
+    projectionVertices.reserve(context.nodePool.size() * 3);
+    /*
     for (const ViewVertex& v : viewVertsAfterFrustum) {
         projectionVertices.push_back(ProjectVertex(v));
+    }*/
+    for (const TriangleNode& n : context.nodePool) {
+        projectionVertices.push_back(ProjectVertex(n.v0));
+        projectionVertices.push_back(ProjectVertex(n.v1));
+        projectionVertices.push_back(ProjectVertex(n.v2));
     }
+
     int breakB = 1;
 
     // ---- ClipSpace Cull & near-plane clipping [TODO] -> do before perspective divide. ----
@@ -474,7 +468,7 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
     // ---- Submit to API ---- [DONE]
     for (int i = 0; i < finalVertices.size(); i += 3) {
         SubmitTriangle(finalVertices[i], finalVertices[i + 1], finalVertices[i + 2], wireframe);
-    }*/
+    }
     
 }
 

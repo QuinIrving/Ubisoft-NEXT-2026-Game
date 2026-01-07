@@ -8,14 +8,9 @@ struct TriangleNode;
 
 struct WorkItem {
 	int32_t nodeIdx;
-	uint64_t nodeID;
-	WorkItem(int32_t nodeIdx, uint64_t nodeID) : nodeIdx(nodeIdx), nodeID(nodeID) {}
-	//uint16_t depth; // This is so, when we modify our node pool parent node with a child node, we also update it's depth. If a work item such as this
-	// has a depth that is different than that node in the pool's depth, then we know that node is now a child node, and this is a duplicate work order that we can skip
-	// this would occur due to a different work item wanting to reference it's neighbour that happens to be the same node, so it duplicates it and adds it to the urgent stack
-	//uint32_t baseTriIndex; // need this so when a new node takes over the freeNode, it can identify if that has occured from a previously placed work item, and will keep it away
-
-	//WorkItem(int32_t nodeIdx, uint32_t baseTriIndex, uint16_t depth) : nodeIdx(nodeIdx), baseTriIndex(baseTriIndex), depth(depth) {}
+	uint32_t baseTriIdx;
+	uint64_t nodeId; // Allows for up to 64 depth, probably much more than we need.
+	WorkItem(int32_t nodeIdx, uint32_t baseTriIdx, uint64_t nodeID) : nodeIdx(nodeIdx), baseTriIdx(baseTriIdx), nodeId(nodeID) {}
 };
 
 struct TriangleContext { // Again temp idea for now just so we can easily access the stuff

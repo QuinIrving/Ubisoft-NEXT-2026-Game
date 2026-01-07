@@ -65,7 +65,7 @@ Vertex v4 = Vertex(1.f, 1, 0);
 std::vector<Vertex> randV = {};
 std::vector<uint32_t> indices = {};
 
-Quad q = Quad(1, 1, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
+Quad q = Quad(45, 20, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
 //------------------------------------------------------------------------
 
 float mX;

@@ -1,35 +1,289 @@
 #include "TriangleNode.h"
 
+
 /*
-void TriangleNode::forceNeighbourSplit(TriangleContext& context, int32_t neighbourPoolIdx, int currentPriority) {
-	TriangleNode& neighbour = context.nodePool[neighbourPoolIdx];
+void TriangleNode::LeftChildSetup(TriangleNode& child, int32_t poolIndex) {
+	child.v0 = v2;
+	child.v2 = v1;
 
-	// check if the neighbour even exists in our heap (if not then it's already been split)
-	if (neighbour.heapIndex == -1) {
-		return;
+	// All neighbours prior should already be at -1 for both this free node, and the neighbours who use to reference it, so we can treat it like a fresh new node
+	child.neighbours[0] = neighbours[2];
+	child.neighbours[1] = poolIndex; // = our right neighbour a.k.a our parent
+	child.neighbours[2] = neighbours[1];
+
+	child.nodeID = nodeID << 1 | 0; // TODO: FIX
+}
+
+void TriangleNode::RightChildSetup(int32_t leftIndex) {
+	v2 = v0;
+	v0 = v1;
+
+	
+	neighbours[1] = neighbours[2];
+	neighbours[2] = neighbours[0];
+	neighbours[0] = leftIndex; // Left child
+
+	nodeID = nodeID << 1 | 1; // TODO: FIX
+}
+
+void TriangleNode::UpdateLeftNeighbours(TriangleContext& context, TriangleNode& child, int32_t childIdx, int32_t poolIndex) {
+	for (int n = 0; n < 3; ++n) {
+		if (child.neighbours[n] != -1 && child.neighbours[n] != poolIndex) {
+			TriangleNode& neighbour = context.nodePool[child.neighbours[n]];
+
+			for (int i = 0; i < 3; ++i) {
+				// if our neighbour was pointing to our parent, make it point to the new child, I guess this actually only matters for left-child... as our right child uses our parent..
+				if (neighbour.neighbours[i] == poolIndex) {
+					neighbour.neighbours[i] = childIdx;
+				}
+			}
+		}
 	}
+}
 
-	int higherPriority = priority + 1;
-	context.updatePriority(neighbourPoolIdx, higherPriority);
+void TriangleNode::GenericChildSetup(TriangleNode& child, ViewVertex m) {
+	child.v1 = m;
+	child.isCulled = false;
+	child.baseTriIdx = baseTriIdx;
+	child.depth = depth + 1;
 }*/
 
 
-void TriangleNode::SplitLongestEdge(TriangleContext& context) {
+// Can really only be used when we do a single child splitting, with both being pushed to the work queue
+void TriangleNode::SingleSplitLongestEdge(TriangleContext& context, int32_t poolIdx) {
 	// Split our node into 2 children nodes, with new vertex midpoint in the middle of edge v2->v0, ensure we properly rotate our childrens vertices, so their v2, v0 don't include the midpoint.
 	// Should put both into work queue
+	/*ViewVertex m = ViewVertex::EdgeMidpointInterpolate(v0, v2);
+	int32_t leftChildIdx = -1;
 
-	// nice interpolation function for a view vertex would be nice.
-	//ViewVertex m = ViewVertex::EdgeMidpointInterpolate();
+	// Create the left child (1)
+	if (!context.freeNodeIndices.empty()) {
+		// child 1 uses this empty node,
+		int32_t freeIdx = context.freeNodeIndices.back();
+		context.freeNodeIndices.pop_back();
 
+		TriangleNode& child1 = context.nodePool[freeIdx];
+		this->LeftChildSetup(child1, poolIdx);
+		this->GenericChildSetup(child1, m);
+		this->UpdateLeftNeighbours(context, child1, leftChildIdx, poolIdx);
+		
+		leftChildIdx = freeIdx;
+	}
+	else {
+		// child 1 creates a new node.
+		leftChildIdx = context.nodePool.size();
+		context.nodePool.push_back({});
+
+		TriangleNode& child1 = context.nodePool[leftChildIdx];
+		this->LeftChildSetup(child1, poolIdx);
+		this->GenericChildSetup(child1, m);
+		this->UpdateLeftNeighbours(context, child1, leftChildIdx, poolIdx);
+	}
+
+	// Create the right child (2)
+	this->RightChildSetup(leftChildIdx);
+	this->GenericChildSetup(*this, m);
+
+	context.workQueue.push_back({ leftChildIdx, context.nodePool[leftChildIdx].nodeID});
+	context.workQueue.push_back({ poolIdx, nodeID });*/
 }
 
-int32_t TriangleNode::SplitAndMatchNeighbour(TriangleContext& context, int32_t neighbourIdx) {
-	TriangleNode& neighbour = context.nodePool[neighbourIdx];
-	// SHould only put the non-matching node into work queue, other one is returned to be added to the stack.
+// stack is not empty, so we have a dependency waiting for one of our 2 childs (specifically the one matching the other's edge.
+// TODO: Split this node and add the 1 child to the stack that is the same longest edge as whats currently on the back
+//WorkItem dependentChild = TriangleNode::SingleSplitAndMatchNeighbour(context, work.nodeIdx, context.urgentStack.back().nodeIdx);
+//context.urgentStack.push_back(dependentChild);
+void TriangleNode::SingleSplitAndMatchNeighbour(TriangleContext& context, int32_t poolIdx, int32_t dependentNeighbourIdx) {
+	int32_t leftChildIndex = TriangleNode::GetLeftChildIndex(context);
+	TriangleNode& node = context.nodePool[poolIdx];
 
-	// Split, child 1 goes to re-use parent node, and goes back to work queue
-	// Child 2 checks for free-nodes if none, then creates new node, and is returned to be added to the urgent stack
-	// Don't forget to update neighbour references to us as well for all 3 edges.
+	TriangleNode& leftChild = context.nodePool[leftChildIndex];
+	TriangleNode::GeneralChildrenSetup(context, node, leftChild);
+
+	leftChild.neighbours[0] = node.neighbours[2];
+	leftChild.neighbours[1] = poolIdx;
+	leftChild.neighbours[2] = node.neighbours[1];
+
+	TriangleNode& rightChild = node; // As our right child takes over our parent.
+	rightChild.neighbours[1] = rightChild.neighbours[2];
+	rightChild.neighbours[2] = rightChild.neighbours[0];
+	rightChild.neighbours[0] = leftChildIndex; // Left child
+
+	// Only need to update my left child neighbours to point to it, as neighbours for right child point to the parent, which is the right child.
+	// Can also use this time to determine where to push a node
+	bool isDependentOnLeftChild = false;
+	for (int n = 0; n < 3; ++n) {
+		int32_t neighbourIdx = leftChild.neighbours[n];
+		if (neighbourIdx != -1 && neighbourIdx != poolIdx) {
+			TriangleNode& neighbour = context.nodePool[neighbourIdx];
+
+			if (neighbourIdx == dependentNeighbourIdx) {
+				isDependentOnLeftChild = true;
+			}
+
+			for (int i = 0; i < 3; ++i) {
+				// if our neighbour was pointing to our parent, make it point to the new child, I guess this actually only matters for left-child... as our right child uses our parent..
+				if (neighbour.neighbours[i] == poolIdx) {
+					neighbour.neighbours[i] = leftChildIndex;
+				}
+			}
+		}
+	}
+
+	// This means the stack is empty, and no dependencies waiting on the child of this split so simply push all to the work queue
+	if (dependentNeighbourIdx == -1) {
+		context.workQueue.push_back({ leftChildIndex, leftChild.baseTriIdx, leftChild.nodeID });
+		context.workQueue.push_back({ poolIdx, rightChild.baseTriIdx, rightChild.nodeID });
+		return;
+	} 
+
+	// elsewise, they we found the side of the triangle that should be added to the stack
+	if (isDependentOnLeftChild) {
+		context.urgentStack.push_back({ leftChildIndex, leftChild.baseTriIdx, leftChild.nodeID });
+		context.workQueue.push_back({ poolIdx, rightChild.baseTriIdx, rightChild.nodeID });
+	}
+	else {
+		context.workQueue.push_back({ leftChildIndex, leftChild.baseTriIdx, leftChild.nodeID });
+		context.urgentStack.push_back({ poolIdx, rightChild.baseTriIdx, rightChild.nodeID });
+	}
+	
+	// Errors may occur due to winding order when I create children here, but I believe it should still be okay? Need to figure out the best for the neighbours and stuff
+
+	// find the child that contains the neighbour idx after split, from that we provide the childs idx, and the nodeId as the work item back to be added to the queue
+	// we will be the ones pushing it into the urgentStack
+}
+
+
+
+// The dependent idx will have a child that contains the neighbour idx, if the stack is empty, it means we don't need to worry about returning anything
+void TriangleNode::DiamondSplit(TriangleContext& context, int32_t nodeIdx, int32_t dependentIdx, int32_t dependentNeighbourIdx) {
+	int32_t neighbourLeftChildIdx = TriangleNode::GetLeftChildIndex(context);
+	int32_t dependentLeftChildIdx = TriangleNode::GetLeftChildIndex(context);
+
+	TriangleNode& neighbour = context.nodePool[nodeIdx];
+	TriangleNode& dependent = context.nodePool[dependentIdx]; // the one with the same longest edge neighbour
+
+	/**************************************************************/
+	// 
+	//						NEIGHBOUR HANDLING
+	// 
+	/**************************************************************/
+	TriangleNode& neighbourLeftChild = context.nodePool[neighbourLeftChildIdx];
+	TriangleNode::GeneralChildrenSetup(context, neighbour, neighbourLeftChild);
+	TriangleNode& neighbourRightChild = neighbour;
+
+	/**************************************************************/
+	// 
+	//						Dependent HANDLING
+	// 
+	/**************************************************************/
+	TriangleNode& dependentLeftChild = context.nodePool[dependentLeftChildIdx];
+	TriangleNode::GeneralChildrenSetup(context, dependent, dependentLeftChild);
+	TriangleNode& dependentRightChild = dependent;
+	
+	/**************************************************************/
+	// 
+	//						Node Neighbours HANDLING
+	// 
+	/**************************************************************/
+	neighbourLeftChild.neighbours[0] = dependentIdx;
+	neighbourLeftChild.neighbours[1] = nodeIdx; // nodeIdx is our neighbourIdx... I know
+	neighbourLeftChild.neighbours[2] = neighbour.neighbours[1];
+
+	neighbourRightChild.neighbours[2] = neighbourRightChild.neighbours[0];
+	neighbourRightChild.neighbours[0] = neighbourLeftChildIdx;
+	neighbourRightChild.neighbours[1] = dependentLeftChildIdx;
+
+	dependentLeftChild.neighbours[0] = nodeIdx;
+	dependentLeftChild.neighbours[1] = dependentIdx;
+	dependentLeftChild.neighbours[2] = dependent.neighbours[1];
+
+	dependentRightChild.neighbours[2] = dependentRightChild.neighbours[0];
+	dependentRightChild.neighbours[0] = dependentLeftChildIdx;
+	dependentRightChild.neighbours[1] = neighbourLeftChildIdx;
+
+	// Only have each child's 2nd neighbour to worry about checking
+	int32_t nIdx = neighbourLeftChild.neighbours[2];
+	TriangleNode::UpdateNeighbourNode(context, nodeIdx, neighbourLeftChildIdx, neighbourLeftChild.neighbours[2], -1);
+	bool isDependentOnLeftChild = TriangleNode::UpdateNeighbourNode(context, dependentIdx, dependentLeftChildIdx, dependentLeftChild.neighbours[2], dependentNeighbourIdx);
+	
+	// stack pushing
+	context.workQueue.push_back({ neighbourLeftChildIdx, neighbourLeftChild.baseTriIdx, neighbourLeftChild.nodeID });
+	context.workQueue.push_back({ nodeIdx, neighbourRightChild.baseTriIdx, neighbourRightChild.nodeID });
+
+	WorkItem depLeftChild = WorkItem(dependentLeftChildIdx, dependentLeftChild.baseTriIdx, dependentLeftChild.nodeID);
+	WorkItem depRightChild = WorkItem(dependentIdx, dependentRightChild.baseTriIdx, dependentRightChild.nodeID);
+
+	if (dependentNeighbourIdx == -1) {
+		context.workQueue.push_back(depLeftChild);
+		context.workQueue.push_back(depRightChild);
+		return;
+	}
+
+	if (isDependentOnLeftChild) {
+		context.workQueue.push_back(depRightChild);
+		context.urgentStack.push_back(depLeftChild);
+		return;
+	} 
+
+	context.workQueue.push_back(depLeftChild);
+	context.urgentStack.push_back(depRightChild);
+}
+
+int32_t TriangleNode::GetLeftChildIndex(TriangleContext& context) {
+	int32_t childIndex;
+	if (!context.freeNodeIndices.empty()) {
+		childIndex = context.freeNodeIndices.back();
+		context.freeNodeIndices.pop_back();
+	}
+	else {
+		childIndex = context.nodePool.size(); // Dangerous, can invalidate our references to a TriangleNode
+		context.nodePool.push_back({});
+	}
+
+	return childIndex;
+}
+
+// In this case the parent gets transformed into the right child. In all except for the neighbours situation.
+void TriangleNode::GeneralChildrenSetup(TriangleContext& context, TriangleNode& parent, TriangleNode& leftChild) {
+	ViewVertex m = ViewVertex::EdgeMidpointInterpolate(parent.v0, parent.v2);
+	leftChild.v0 = parent.v2;
+	leftChild.v1 = ViewVertex(m);
+	leftChild.v2 = parent.v1;
+
+	leftChild.isCulled = false;
+	leftChild.nodeID = parent.nodeID << 1 | 0;
+	leftChild.baseTriIdx = parent.baseTriIdx;
+	leftChild.depth = parent.depth + 1;
+
+	TriangleNode& rightChild = parent; // parent is our right child.
+	rightChild.v2 = rightChild.v0;
+	rightChild.v0 = rightChild.v1;
+	rightChild.v1 = ViewVertex(m);
+
+	rightChild.nodeID = rightChild.nodeID << 1 | 1;
+	rightChild.depth = rightChild.depth + 1;
+}
+
+bool TriangleNode::UpdateNeighbourNode(TriangleContext& context, int32_t parentIndex, int32_t leftChildIndex, int32_t neighbourIndex, int32_t dependentNeighbourIndex) {
+	bool isDependentOnLeftChild = false;
+
+	if (neighbourIndex != -1) {
+		TriangleNode& newEdgeNeighbour = context.nodePool[neighbourIndex];
+
+		if (neighbourIndex == dependentNeighbourIndex) {
+			isDependentOnLeftChild = true;
+		}
+
+		for (int i = 0; i < 3; ++i) {
+			// if our neighbour was pointing to our parent, make it point to the new child, I guess this actually only matters for left-child... as our right child uses our parent..
+			if (newEdgeNeighbour.neighbours[i] == parentIndex) {
+				newEdgeNeighbour.neighbours[i] = leftChildIndex;
+			}
+		}
+
+	}
+
+	return isDependentOnLeftChild;
 }
 
 uint64_t MakeEdgeKey(uint32_t a, uint32_t b) {

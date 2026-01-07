@@ -15,15 +15,23 @@ struct MeshPosition {
 struct TriangleNode { // This will hopefully be able to be used with both the base triangle node, as well as the split children of it.
 	TriangleNode() : nodeID(0), /*heapIndex(-1),*/ baseTriIdx(0), depth(0), v0(), v1(), v2() {};
 	
-	uint64_t nodeID; // Bitwise ID starts at 0.
+	uint64_t nodeID = 1; // Bitwise ID starts at 1.
 	int32_t neighbours[3] = { -1, -1, -1 }; // nodepool index values
 	ViewVertex v0, v1, v2;
 	uint32_t baseTriIdx; // 3 vertices, this v0: index * 3, v1: +1, v2: +2
 	uint16_t depth;
 	bool isCulled = false; // in-case we finish processing all children, and a free-node that was culled wasn't re-used by a child so it's still in the node pool.
 
-	void SplitLongestEdge(TriangleContext& context);
-	int32_t SplitAndMatchNeighbour(TriangleContext& context, int32_t neighbourIdx);
+	/*void LeftChildSetup(TriangleNode& child, int32_t poolIndex);
+	void UpdateLeftNeighbours(TriangleContext& context, TriangleNode& child, int32_t childIdx, int32_t poolIndex);
+	void RightChildSetup(int32_t leftIndex);*/
+	static int32_t GetLeftChildIndex(TriangleContext& contex);
+	static void GeneralChildrenSetup(TriangleContext& context, TriangleNode& parent, TriangleNode& leftChild);
+	static bool UpdateNeighbourNode(TriangleContext& context, int32_t parentIndex, int32_t leftChildIndex, int32_t neighbourIndex, int32_t dependentNeighbourIndex);
+
+	void SingleSplitLongestEdge(TriangleContext& context, int32_t poolIdx); // Should make these static too
+	static void SingleSplitAndMatchNeighbour(TriangleContext& context,int32_t poolIdx, int32_t neighbourIdx); // should make these static too
+	static void DiamondSplit(TriangleContext& context, int32_t nodeIdx, int32_t dependentIdx, int32_t dependentNeighbourIdx);
 
 	//Vec3<float> v0, v1, v2; // These should be sorted, since CCW, v2->v0 should contain longest edge. (need to rotate vertices to ensure that). This is the Mesh Position
 	//int64_t neighbourBaseTriangleIdx[3]; // -1 = invalid TriangleIdx. 0: v0->v1, 1: v1->v2, 2: v2->v0;
