@@ -72,6 +72,13 @@ Model ObjectLoader::Load(const std::string& path) {
 			(v0, v1, v2)
 			(v0, v2, v3)
 			(v0, v3, v4)
+
+			-----
+			Specific scenarios
+			f v
+			f v/vt
+			f v//vn
+			f v/vt/vn
 			*/
 
 		}
