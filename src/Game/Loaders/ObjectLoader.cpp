@@ -15,6 +15,24 @@ namespace
 		inputString.erase(inputString.find_last_not_of(" \t\r\n") + 1, inputString.size());
 	}
 
+	std::vector<std::string> extractData(std::string& input, std::string delimiter) {
+		std::vector<std::string> extractedData;
+		size_t lastPos = 0;
+		size_t pos = input.find(delimiter, 0);
+
+		while (pos != std::string::npos) {
+			std::string data = input.substr(lastPos, pos - lastPos);
+			extractedData.push_back(data);
+
+			lastPos = pos + delimiter.length();
+			pos = input.find(delimiter, lastPos);
+		}
+
+		// edge case of the last piece of data that will end up having no delimiter
+		extractedData.push_back(input.substr(lastPos, std::string::npos));
+		return extractedData;
+	}
+
 }
 
 Model ObjectLoader::Load(const std::string& path) {
@@ -27,6 +45,7 @@ Model ObjectLoader::Load(const std::string& path) {
 	}
 
 	std::string line;
+	std::string delimiter = " ";
 	
 	std::vector<Vec3<float>> objVertices;
 	std::vector<Vec2<float>> objTextureCoords;
@@ -54,14 +73,20 @@ Model ObjectLoader::Load(const std::string& path) {
 		std::string prefix = line.substr(0, identifierPos);
 		int test = 2;
 		
+		std::string data = line.substr(identifierPos + 1, line.size());
+
 		if (prefix == "v") {
+			std::vector<std::string> stringVerts = extractData(data, " ");
+			int d = 0;
 
 		}
 		else if (prefix == "vt") {
-
+			std::vector<std::string> stringVerts = extractData(data, " ");
+			int d = 0;
 		}
 		else if (prefix == "vn") {
-
+			std::vector<std::string> stringVerts = extractData(data, " ");
+			int d = 0;
 		}
 		else if (prefix == "f") {
 			haveSeenAFace = true;
@@ -80,7 +105,8 @@ Model ObjectLoader::Load(const std::string& path) {
 			f v//vn
 			f v/vt/vn
 			*/
-
+			std::vector<std::string> stringVerts = extractData(data, " ");
+			int d = 0;
 		}
 		else if (prefix == "g") {
 			// Means we don't need to create and push a new object, once we have, the next g means a new mesh.
