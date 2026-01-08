@@ -27,6 +27,7 @@
 #include <main.h>
 #include "Graphics/Pipeline.h"
 #include "Tessellation/TessellatedPipeline.h"
+#include "Loaders/ObjectLoader.h"
 
 
 //Pipeline& p = Pipeline::GetInstance();
@@ -96,6 +97,8 @@ void Init()
 		indices.push_back(i);
 		randV.push_back(Vertex(1, 2, 3));
 	}
+
+	ObjectLoader::Load("./data/Models/Bunny/stanford-bunny.obj");
 
 
 	//------------------------------------------------------------------------

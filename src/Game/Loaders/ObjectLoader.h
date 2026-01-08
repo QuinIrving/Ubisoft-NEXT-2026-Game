@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include "Objects/Model.h"
 #include "Objects/Mesh.h"
 
@@ -9,7 +10,7 @@
 Function to read in .mtl file and we want some form of reference to our global material hashmap
 check and read in and store the properties of each material.
 
-On each object, we want to be able to extrat the vertices (always there)
+On each object, we want to be able to extract the vertices (always there)
 Check for and extract the vertex normals (if they're there)
 Check for and extract the Texture coords (if they're there)
 Generate faces (so create the 3 vertices, and store them into the pre-processed mesh if we can)
@@ -22,6 +23,13 @@ Skip sections where there is a #, should read up to that point, and don't give a
 "./data/TestData/Test.bmp" is how the sprite, so ours will be in ./data/FOLDERNAME/file whatever path we want right
 
 */
+
+namespace ObjectLoader {
+	//std::unordered_map<std::string, Model> objectMap;
+	//std::unordered_map<std::string, Texture> textureMap;
+
+	Model Load(const std::string& path);
+};
 
 
 // We haven't made our ECS yet, so this is just rough, but we want to pass back a potentially composite object of multiple submeshes, Most likely we want a Mesh object, and an Object object

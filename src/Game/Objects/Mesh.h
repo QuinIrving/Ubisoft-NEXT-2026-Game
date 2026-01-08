@@ -15,5 +15,5 @@ struct Mesh {
 public:
 	// vertices (only generated once) -> shared after being pre-processed for our tessellation pipeline.
 	std::shared_ptr<MeshGeometry> geometry; // If an object has already been loaded once, it simply copies from the base model, that will provide the base values, material can be updated though
-	Material material; // instance specific
+	//Material material; // instance specific
 };

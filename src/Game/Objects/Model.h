@@ -29,5 +29,5 @@ private:
 	Vec3<float> m_scale{1, 1, 1};
 	Quaternion m_delta;
 	std::vector<Mesh> m_meshes;
-	ModelAttributes attributes;
+	//ModelAttributes attributes;
 };
