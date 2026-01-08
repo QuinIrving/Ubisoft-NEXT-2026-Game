@@ -37,7 +37,7 @@ TessellatedPipeline& TessellatedPipeline::GetInstance() {
 
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
 constexpr bool wireframe = true;
-constexpr float errorThreshold = 108.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
+constexpr float errorThreshold = 75.f;//25.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
 // Should be a pipeline specific member variable that can be changed based on setting chose ^.
 constexpr float errorThresholdSq = errorThreshold * errorThreshold;
 
@@ -56,6 +56,11 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
     // Need to also worry about moving light into either view or keep in world space. (may even have it's own model matrix to apply to itself)
 
     // Pre-process triangle mesh (should be done on object load/read first-time, or first time creating a defined object such as a Quad. (shouldn't be every frame like I do here)
+    // Place-holder check
+    //vertices[0].SetColour(255, 255, 255, 255);
+    //vertices[1].SetColour(255, 0, 0, 255);
+    //vertices[2].SetColour(0, 255, 0, 255);
+    //vertices[3].SetColour(0, 0, 255, 255); // Turn back to const vertices.
     auto context = PreProcessMesh(vertices, indices);
     int breakO;
 
@@ -73,7 +78,12 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
 
     // Create my base TriangleNodes via the ViewVerts given.
     for (int i = 0; i < viewVerts.size(); i += 3) {
-        // SHOULD DO OUR INITIAL BACKFACE AND FRUSTUM CULLING IN HERE, BEFORE WE PUSH BACK TO NOT EVEN ADD IT TO OUR LIST OF NODES.
+        // SHOULD DO OUR INITIAL BACKFACE AND FRUSTUM CULLING IN HERE -> IF there is no displacement map or any other displacement via other means applied
+        // BEFORE WE PUSH BACK TO NOT EVEN ADD IT TO OUR LIST OF NODES.
+
+        // Could potentially do a conservative frustum cull check!
+        // For my texture loader, if it's a displacement map, could on initial read, keep track of the absolute max 3d value 
+        // (could also be grayscale so need to be careful if it's not vector displacement map but a height map), and use it * intensity for the conservative frustum culling.
 
         TriangleNode node = TriangleNode();
         node.depth = 0;

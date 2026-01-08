@@ -18,7 +18,7 @@ public:
 	std::vector<Vertex>& GetVertices();
 
 	Vec3<float> GetTranslation() { return m_position; }
-	Vec3<float> GetRotation() { return m_rotation; }
+	//Vec3<float> GetRotation() { return m_rotation; }
 	Vec3<float> GetScale() { return m_scale; }
 
 	//Material material;
@@ -26,7 +26,7 @@ public:
 
 private:
 	Vec3<float> m_position{ 0., 0., 0. };
-	Vec3<float> m_rotation{ 0., 0., 0. };
+	//Vec3<float> m_rotation{ 0., 0., 0. };
 	Vec3<float> m_scale{ .5, .5, .5 };
 	Quaternion m_delta;
 	QuadMesh m_mesh;

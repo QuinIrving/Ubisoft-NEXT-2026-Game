@@ -3,6 +3,7 @@
 #include "Math/Mat4.h"
 #include "Math/Vec4.h"
 #include "Texture.h"
+#include "Objects/Mesh.h"
 
 enum class TextureSamplingMode {
 	Nearest,
@@ -18,7 +19,7 @@ enum class LightingModel {
 	// half lambert?
 };
 
-struct Material {
+struct Material { // Probably need to refactor this lol!!!!
 	Vec4<float> baseColour{ 1.f, 1.f, 1.f, 1.f };
 	// albedoTexture is also used for regular texture mapping
 	std::optional<const Texture*> albedoTexture; // if we aren't doing any sharedpointer and all of that with the texture manager, else we can do a weak_ptr.
@@ -42,11 +43,13 @@ struct Material {
 struct ModelAttributes {
 	static uint32_t currentNumObjects;
 
+	uint32_t uniqueObjectIndex;
 	Mat4<float> modelMatrix;
+	std::vector<Mesh>& meshes = {};
 	//std::shared_ptr<Material> material; // Should setup our textures, and our materials on loadup, then each model can point to one
-	Material material; // for simplicity at the start I'll do this.
+	//Material material; // for simplicity at the start I'll do this.
 
-	uint32_t uniqueObjectIndex; // This is so for each object created, it should be unique
+	 // This is so for each object created, it should be unique
 
 	ModelAttributes() { uniqueObjectIndex = currentNumObjects; currentNumObjects++; }
 };

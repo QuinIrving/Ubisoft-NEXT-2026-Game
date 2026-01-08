@@ -25,9 +25,11 @@
 #include "Graphics/Pipeline.h"
 #include "Objects/Quad.h"
 #include <main.h>
+#include "Graphics/Pipeline.h"
 #include "Tessellation/TessellatedPipeline.h"
 
 
+//Pipeline& p = Pipeline::GetInstance();
 TessellatedPipeline& p = TessellatedPipeline::GetInstance();
 
 //------------------------------------------------------------------------
@@ -66,6 +68,7 @@ std::vector<Vertex> randV = {};
 std::vector<uint32_t> indices = {};
 
 Quad q = Quad(45, 20, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
+
 //------------------------------------------------------------------------
 
 float mX;
@@ -261,6 +264,7 @@ void Update(const float deltaTime)
 	//q.Translate(0, 0, t);
 	//p.camera.RotateXY(0, 10 / deltaTime);
 	//p.camera.
+	//q.Rotate(0.1, 0.1, 0);
 }
 
 //------------------------------------------------------------------------
