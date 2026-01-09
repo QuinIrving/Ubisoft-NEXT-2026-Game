@@ -81,8 +81,8 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
         // REJECT NEAR/FAR (Z-AXIS)
         char textBuffer[128];
-        snprintf(textBuffer, sizeof(textBuffer), "(v0, v1, v2) Z: (%f, %f, %f), (n, f): (%f, %f)", v0.z, v1.z, v2.z, -this->n, -this->f);
-        App::Print(10, APP_VIRTUAL_HEIGHT - 120 - (i * 10), textBuffer, 0.5f, 1.0f, 0.5f, GLUT_BITMAP_HELVETICA_10);
+        //snprintf(textBuffer, sizeof(textBuffer), "(v0, v1, v2) Z: (%f, %f, %f), (n, f): (%f, %f)", v0.z, v1.z, v2.z, -this->n, -this->f);
+        //App::Print(10, APP_VIRTUAL_HEIGHT - 120 - (i * 10), textBuffer, 0.5f, 1.0f, 0.5f, GLUT_BITMAP_HELVETICA_10);
         if (v0.z > -this->n && v1.z > -this->n && v2.z > -this->n) { continue; }
         //if (v0.z > this->n && v1.z > this->n && v2.z > this->n) { continue; } // we do this instead of  -n to allow for displacement mapping to push vertices back into plane later,
         if (v0.z < -this->f && v1.z < -this->f && v2.z < -this->f) { continue; }
@@ -160,7 +160,7 @@ ViewVertex Pipeline::ProcessVertex(const Vertex& v, const Mat4<float> M, const M
 
     Vec4<float> viewTangent = Vec4<float>(v.GetTangent(), 0) * M * V;
 
-    return ViewVertex(worldPos, viewPos, worldNormal, viewNormal, viewTangent, v.GetUV(), v.GetColour(), v.GetMeshIndex(), v.GetUniqueIndex());
+    return ViewVertex(worldPos, viewPos, worldNormal, viewNormal, viewTangent, v.GetUV(), v.GetColour(), v.GetMeshIndex(), v.GetMaterialIndex(), v.GetUniqueIndex());
 }
 
 ProjectionVertex Pipeline::ProjectVertex(const ViewVertex& v) const {

@@ -1,5 +1,7 @@
 #pragma once
 #include <string>
+#include <unordered_map>
+#include "Graphics/ModelAttributes.h"
 #include "Objects/Model.h"
 #include "Objects/Mesh.h"
 
@@ -25,8 +27,9 @@ Skip sections where there is a #, should read up to that point, and don't give a
 */
 
 namespace ObjectLoader {
-	//std::unordered_map<std::string, Model> objectMap;
-	//std::unordered_map<std::string, Texture> textureMap;
+	extern std::unordered_map<std::string, Model> objectMap;
+	extern std::unordered_map<std::string, Texture> textureMap;
+	extern std::unordered_map<std::string, Material> materialMap;
 
 	Model Load(const std::string& path);
 };

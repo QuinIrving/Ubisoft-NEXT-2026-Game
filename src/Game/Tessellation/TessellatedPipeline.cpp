@@ -37,11 +37,12 @@ TessellatedPipeline& TessellatedPipeline::GetInstance() {
 
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
 constexpr bool wireframe = true;
-constexpr float errorThreshold = 75.f;//25.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
+constexpr float errorThreshold = 9999999.f;//25.0f;//1078.f;//75.f;//25.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
 // Should be a pipeline specific member variable that can be changed based on setting chose ^.
 constexpr float errorThresholdSq = errorThreshold * errorThreshold;
 
-void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) {
+//void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) {
+void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<float>& modelMatrix, const ModelEdge& edges) {
     // Pretend Camera and Lights [DOING]
     //Mat4<float> cameraView = Mat4<float>::GetIdentity();
 
@@ -61,19 +62,27 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
     //vertices[1].SetColour(255, 0, 0, 255);
     //vertices[2].SetColour(0, 255, 0, 255);
     //vertices[3].SetColour(0, 0, 255, 255); // Turn back to const vertices.
-    auto context = PreProcessMesh(vertices, indices);
-    int breakO;
+    //auto context = PreProcessMesh(vertices, indices);
+    //int breakO;
+
+    // Little map here so we can retrieve based on vertex index, which mesh we're within so we can get our specific material.
+    std::vector<Vertex> verts; // may want to change this as something we get from model?
+    for (const Mesh& mesh : meshes) {
+        verts.insert(verts.end(), mesh.geometry->processedMesh.begin(), mesh.geometry->processedMesh.end());
+    }
 
     // ---- Object -> Model -> view transform Vertex Process ---- [DONE]
     std::vector<ViewVertex> viewVerts;
-    viewVerts.reserve(indices.size());
+    viewVerts.reserve(verts.size());
 
-    for (const Vertex& v : context.processedMesh) {
+    for (const Vertex& v : verts) {
         // Apply MV properly with copy of v. -> new object: ViewVertex, which we use to assemble a triangle TriOut or Triangle?
-        viewVerts.push_back(ProcessVertex(v, modelAttributes.modelMatrix, camera.GetViewMatrix()));
+        viewVerts.push_back(ProcessVertex(v, modelMatrix, camera.GetViewMatrix()));
     }
 
-    context.nodePool.reserve(context.processedMesh.size() / 3);
+    TriangleContext context;
+
+    context.nodePool.reserve(viewVerts.size() / 3);
     context.urgentStack.reserve(16); // Just a baseline to initialize some simple memory, shouldn't really reach this large of a chain too often.
 
     // Create my base TriangleNodes via the ViewVerts given.
@@ -103,7 +112,7 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
         node.neighbours[2] = -1;
 
         uint64_t key = MakeEdgeKey(mIdx0, mIdx1);
-        for (uint32_t a : context.adjacencyTable[key]) {
+        for (uint32_t a : edges.adjacencyTable.at(key)) {
             if (a != node.baseTriIdx) {
                 node.neighbours[0] = a;
                 break;
@@ -111,7 +120,7 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
         }
 
         key = MakeEdgeKey(mIdx1, mIdx2);
-        for (uint32_t a : context.adjacencyTable[key]) {
+        for (uint32_t a : edges.adjacencyTable.at(key)) {
             if (a != node.baseTriIdx) {
                 node.neighbours[1] = a;
                 break;
@@ -119,7 +128,7 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
         }
 
         key = MakeEdgeKey(mIdx2, mIdx0);
-        for (uint32_t a : context.adjacencyTable[key]) {
+        for (uint32_t a : edges.adjacencyTable.at(key)) {
             if (a != node.baseTriIdx) {
                 node.neighbours[2] = a;
                 break;
@@ -144,6 +153,8 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
     and will have it's index added to a list/stack of freenodes, which a child getting split that isn't going into the parent can claim first, only when that list is empty,
     does it then add a new node. Don't forget to update the base triidx (<- only for previously culled nodes) and depth (for both previously culled, and for old parents)
     */
+
+    // ---- Dynamic tessellation [DONE] ----
 
     bool forceSplit = false;
     while (!context.workQueue.empty()) {
@@ -261,89 +272,6 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
 
     // At this point should be able to go through the node pool and process each vertex as needed, as long as the flag is good.
     int tester = 0;
-
-            // First-Pass tessellate to find how far we should maximally split depth for each triangle node.
-            //while (!tessellateStack.empty()) {
-            //    TriangleNode node = tessellateStack.back();
-            //    tessellateStack.pop_back();
-
-                // Need to check if neighbour is good, takes O(log n) steps to get the neighbour given what we have.
-                // Might want a faster way to access a neighbour, something like a cache from neighbour vertex, that contains it's lowest depth, that way we could potentially use that in most scenarios
-                // of retrieving, except when it's further ahead
-            //    int64_t longNeighbour = node.neighbourBaseTriangleIdx[2];
-
-            //    bool shouldSplit = CalculateSSE(node.v0, node.v2) > errorThresholdSq;
-
-                // Our long-edge neighbour should be no triangle then, so the edge of the mesh, should be able to simply split if we want.
-                //if (longNeighbour == -1) {
-                    // do Split check, then split
-                    //continue;
-                //}
-
-                /*
-                    What I know:
-                        - If we have a neighbour B on our longest edge, and at this depth it has a different longest edge, then (as long as we keep on creating children using the rotation rule)
-                            the childrens longest edge after split should be our longest edge guaranteed.
-                        - We can check if they have the same longest edge by checking if either:
-                            - neighbourV0 == ourV0 && neighbourV2 == ourV2
-                            - OR: neighbourV2 == ourV0 && neighbourV0 == ourV2
-                        - if either of ^ statements are true, we share the same long edge as our neighbour and both can be split.
-                        - If not, again we can add in the neighbour (after reconstructing potentially?) and after it splits, it's children and our node can split.
-
-                        
-                */
-
-
-                /*
-                // Check if neighbour is behind us in-depth.
-                if (context.depthLevels[longNeighbour] < node.depth) {
-                    // We can't split yet, so we must increase neighbours level and 
-
-                    continue;
-                } // Check if our node is supposed to force split
-                else if (node.depth < context.depthLevels[longNeighbour]) {
-                    continue;
-                }
-
-
-                if (node.depth == 0) {
-                    uint32_t neighbourMIdx0 = viewVerts[longNeighbour * 3].GetMeshIndex();
-                    uint32_t neighourMIdx2 = viewVerts[(longNeighbour * 3) + 2].GetMeshIndex();
-                    bool sharesSameEdge = false;
-
-
-                    // check edge key to see if we are within the same triangle, if so we can simply split. Else we need to tell neighbour to check and split.
-                    for (uint32_t tIdx : context.adjacencyTable[MakeEdgeKey(neighbourMIdx0, neighourMIdx2)]) {
-                        if (tIdx == node.baseTriIdx) {
-                            sharesSameEdge = true;
-                            break;
-                        }
-                    }
-
-                    if (!sharesSameEdge) {
-                        // push neighbour onto stack to do it's work first.
-
-                        continue;
-                    }
-
-                    // They share the same edge, so we can split, and also tell it to split by adding to our depth level.
-                }*/
-        
-
-                //CalculateSSE(v0, v2) -> provides us with a squared value if I'm not mistaken, need to check threshold squared.
-
-                // If we reach here, it means the depth are equal, so we do our regular threshold check (check the nodes view edges, if any of them are larger than the threshold), and if we must check then we check if the neighbour can also split
-                // If the neighbour can split, we update it's level, we may need to in this scenario and others if the neighbour must be split first, push the neighbour onto the stack after reconstructing
-                // it to our level and position using the bitID, that way we can wait for it to work before we re-do ours (so push that re-constructed neighbour after we already push ourselves back on
-                // so we can properly wait for it to work.
-                // 
-                // When it's our turn to potentially split, we create our children.
-                // Longest edge for the children is the edge not having the midpoint new vertex.
-            //}
-
-    
-            // Second-pass Tessellate, go down to the depth of each depth level we have for each node, and interpolate all of the ViewVertex values,
-            // ensure to also properly backface-cull and frustum cull early here to reduce triangle tessellation at this stage.
     int test = 2;
 
 
@@ -414,24 +342,7 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
                     if (v0.z < -this->f && v1.z < -this->f && v2.z < -this->f) { continue; }
 
                     viewVertsAfterFrustum.insert(viewVertsAfterFrustum.end(), { viewVertsAfterCull[i], viewVertsAfterCull[i + 1], viewVertsAfterCull[i + 2] });
-                }
-
-
-                // ---- Screen-size Estimation [TODO] ----
-                /*
-                Here is how I have been reading it. THe simplistic approach is in some way estimate the edge lengths in screen space
-                with some form of either applying the projection matrix to get screen size, or some form of estimate. Get the max edge
-                between the 3 vertices of the triangle given, and if it's too large, then we do a midpoint subidviision to go from 
-                1 tri -> 4 triangles, and do that a certain amount of times recursively. Let's see if there is a better algorithm
-                that is perhaps more performant, need to see.
-
-                ------- Reyes algorithms --------
-
-                * /
-
-                // ---- Dynamic tessellation [TODO] -> should output triangles, not vertices ---- (SHould take in triangles and output more triangles)
-                    // Don't forget to cache LOD, and try to ensure not to have swimming/gaps in edges of shared triangles with different outer edge levels
-                */
+                }*/
 
     
     // ---- Displacement mapping [TODO] ----
@@ -449,10 +360,7 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
     // ---- Apply Projection ----[DONE]
     std::vector<ProjectionVertex> projectionVertices;
     projectionVertices.reserve(context.nodePool.size() * 3);
-    /*
-    for (const ViewVertex& v : viewVertsAfterFrustum) {
-        projectionVertices.push_back(ProjectVertex(v));
-    }*/
+
     for (const TriangleNode& n : context.nodePool) {
         projectionVertices.push_back(ProjectVertex(n.v0));
         projectionVertices.push_back(ProjectVertex(n.v1));
@@ -470,8 +378,18 @@ void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std:
     std::vector<ScreenSpaceVertex> finalVertices;
     finalVertices.reserve(projectionVertices.size());
     
-    for (const ProjectionVertex& v : projectionVertices) {
-        finalVertices.push_back(HomogenizeAndViewportMap(v));
+    for (int i = 0; i < projectionVertices.size(); i += 3) {
+        const ProjectionVertex& v0 = projectionVertices[i];
+        const ProjectionVertex& v1 = projectionVertices[i+1];
+        const ProjectionVertex& v2 = projectionVertices[i+2];
+
+        if (v0.GetClipPosition().w <= 0 || v1.GetClipPosition().w <= 0 || v2.GetClipPosition().w <= 0) {
+            continue;
+        }
+
+        finalVertices.push_back(HomogenizeAndViewportMap(v0));
+        finalVertices.push_back(HomogenizeAndViewportMap(v1));
+        finalVertices.push_back(HomogenizeAndViewportMap(v2));
     }
     int breakC = 1;
 
@@ -493,7 +411,7 @@ ViewVertex TessellatedPipeline::ProcessVertex(const Vertex& v, const Mat4<float>
 
     Vec4<float> viewTangent = Vec4<float>(v.GetTangent(), 0) * M * V;
 
-    return ViewVertex(worldPos, viewPos, worldNormal, viewNormal, viewTangent, v.GetUV(), v.GetColour(), v.GetMeshIndex(), v.GetUniqueIndex());
+    return ViewVertex(worldPos, viewPos, worldNormal, viewNormal, viewTangent, v.GetUV(), v.GetColour(), v.GetMeshIndex(), v.GetMaterialIndex(), v.GetUniqueIndex());
 }
 
 ProjectionVertex TessellatedPipeline::ProjectVertex(const ViewVertex& v) const {

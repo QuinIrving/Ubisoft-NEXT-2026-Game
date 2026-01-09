@@ -1,5 +1,6 @@
 #pragma once
 #include <optional>
+#include <memory>
 #include "Math/Mat4.h"
 #include "Math/Vec4.h"
 #include "Texture.h"
@@ -19,7 +20,7 @@ enum class LightingModel {
 	// half lambert?
 };
 
-struct Material { // Probably need to refactor this lol!!!!
+struct MaterialOld { // Probably need to refactor this lol!!!!
 	Vec4<float> baseColour{ 1.f, 1.f, 1.f, 1.f };
 	// albedoTexture is also used for regular texture mapping
 	std::optional<const Texture*> albedoTexture; // if we aren't doing any sharedpointer and all of that with the texture manager, else we can do a weak_ptr.
@@ -35,10 +36,63 @@ struct Material { // Probably need to refactor this lol!!!!
 	float roughness = 0.5f; // 0<->1, where 0 is smooth, and 1 is rough.
 	Vec3<float> emissiveColour{ 0.f, 0.f, 0.f };
 	std::optional<const Texture*> metallicRoughnessMap; // Combined, may need to add in a separated version if needed.
-	std::optional<const Texture*> normalMap;
+	std::optional<const Texture*> normalMap; // DOn't really think we need due to using displacement map and calculating normals, but will see.
 	std::optional<const Texture*> emissiveMap;
 	std::optional<const Texture*> ambientOcclusionMap;
 };
+
+struct Material {
+	
+	Vec3<float> Ka; // Ambient colour, colour when lit by ambient light only
+	Vec3<float> Kd; // Diffuse colour, base colour of material, like albedo map
+	Vec3<float> Ks; // Specular colour, colour of specular highlights
+	Vec3<float> Tf; // Transmission filter - Colour filter applied to light passing through this transparent object
+	unsigned int illum; // Determines lighting equation to use ~ 0: colour only & no lighting, 1: Diffuse only, 2: Diffuse & Specular, 3-10 Various other types (reflection, refraction, etc)
+	float d; // Disolve/Opacity 0.0 (transparent) -> 1.0 (opaque)
+	float Ns; // Specular exponent - Shininess value, higher means sharper highlights, lower mean high roughness.
+	int sharpness; // Reflection sharpness
+	float Ni; // Optical density (Index of Refraction)
+	
+	std::shared_ptr<Texture> map_Ka; // Ambient texture, either same as albedo or not used
+	std::shared_ptr<Texture> map_Kd; // Diffuse texture - Albedo/base colour map
+	std::shared_ptr<Texture> map_Ks; // Specular texture, can inform metallic map (metal = white, non-metal = black)
+	std::shared_ptr<Texture> map_Ns; // Specular exponent/shininess map, Roughness map but inverted, Dark areas in the map = rough, bright = smooth
+	std::shared_ptr<Texture> map_d; // Opacity/Alpha map. White = opaque, black = transparent
+	std::shared_ptr<Texture> disp; // Displacement/height map
+	std::shared_ptr<Texture> decal; // Decal stencil/overlay texture
+	std::shared_ptr<Texture> bump; // Normal map or bump map
+	std::shared_ptr<Texture> refl; // reflection map, environment cubemap for reflections
+
+	/*
+	Illum models:
+
+	0		Color on and Ambient off
+	1		Color on and Ambient on
+	2		Highlight on
+	3		Reflection on and Ray trace on
+	4		Transparency: Glass on
+				Reflection: Ray trace on
+	5		Reflection: Fresnel on and Ray trace on
+	6		Transparency: Refraction on
+				Reflection: Fresnel off and Ray trace on
+	7		Transparency: Refraction on
+				Reflection: Fresnel on and Ray trace on
+	8		Reflection on and Ray trace off
+	9		Transparency: Glass on
+				Reflection: Ray trace off
+	10		Casts shadows onto invisible surfaces
+	*/
+	
+	// on texture maps there are parameters:
+	/*
+	* -s (scale): UV scale multiplier (u, v, w)
+	* -o (offset): UV offset (u, v, w)
+	* -mm (mipmap) base and gain values for mipmap filtering
+	* -bm (bump multiplier) Strength of bump map effect
+	* 
+	*/
+};
+
 
 struct ModelAttributes {
 	static uint32_t currentNumObjects;

@@ -11,6 +11,7 @@
 #include "Graphics/Camera.h"
 #include <AppSettings.h>
 #include "TriangleNode.h"
+#include "Objects/Model.h"
 
 /*
     Singleton (thread safe) Pipeline class for rendering.
@@ -21,7 +22,8 @@ public:
     static TessellatedPipeline& GetInstance();
 
     // business logic -> probably some way to bind vertex shader, not sure if needed though.
-    void Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes);
+    //void Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes);
+    void Render(const std::vector<Mesh>& meshes, const Mat4<float>& modelMatrix, const ModelEdge& edges);
     
     ViewVertex ProcessVertex(const Vertex& v, const Mat4<float> M, const Mat4<float> V) const;
     ProjectionVertex ProjectVertex(const ViewVertex& v) const;

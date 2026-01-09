@@ -7,7 +7,7 @@
 class Vertex {
 public:
 	Vertex() = default;
-	Vertex(Vec3<float> pos) : m_position(pos) {}
+	//Vertex(Vec3<float> pos) : m_position(pos) {}
 	Vertex(float x, float y, float z) : m_position({ x, y, z }) {}
 	constexpr Vertex(Vec3<float> pos, Vec4<float> col = { 1, 1, 1, 1 }, Vec3<float> norm = { 0, 0, 1 }, Vec2<float> uv = {}, Vec3<float> tan = {}, float tanW = 0.f, uint32_t meshIndex = -1) :
 		m_position(pos), m_colour(col), m_normal(norm), m_UV(uv), m_tangent(tan), m_tangentW(tanW), m_meshIndex(meshIndex) {}
@@ -22,6 +22,7 @@ public:
 	const float GetTangentW() const { return m_tangentW; }
 	uint32_t GetMeshIndex() const { return m_meshIndex; }
 	uint32_t GetUniqueIndex() const { return m_uniqueIndex; }
+	uint32_t GetMaterialIndex() const { return m_materialIndex; }
 
 	void SetNormal(Vec3<float> norm) { m_normal = norm; }
 	void SetColour(int r, int g, int b, int a = 255) { m_colour = { r / 255.f, g / 255.f, b / 255.f, a / 255.f }; }
@@ -30,6 +31,7 @@ public:
 
 	void SetMeshIndex(uint32_t meshIndex) { m_meshIndex = meshIndex; }
 	void SetUniqueIndex(uint32_t index) { m_uniqueIndex = index; }
+	void SetMaterialIndex(uint32_t materialIndex) { m_materialIndex = materialIndex; }
 
 private:
 	Vec3<float> m_position = { 0, 0, 1 };
@@ -41,4 +43,5 @@ private:
 
 	uint32_t m_meshIndex = -1;// for my tessellation
 	uint32_t m_uniqueIndex = -1;
+	uint32_t m_materialIndex = -1;
 };

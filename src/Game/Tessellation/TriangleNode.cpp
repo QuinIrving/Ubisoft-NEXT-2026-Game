@@ -295,6 +295,7 @@ uint64_t MakeEdgeKey(uint32_t a, uint32_t b) {
 	return key;
 }
 
+/*
 TriangleContext PreProcessMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices) {
 	// Take in a mesh in model space, and want to pre-determine the general neighbour structure, and re-arrange the vertices as necessary to fit it via rotation
 	TriangleContext context;
@@ -364,7 +365,7 @@ TriangleContext PreProcessMesh(const std::vector<Vertex>& vertices, const std::v
 			// Must do 2 rotations to get the longest edge to be v2->v0
 			/*
 			v0->v1 is currently the longest, so v1 maps to v0, v0 maps to v2, and v2 maps to v1
-			*/
+			* /
 			rv0 = v1;
 			rv1 = v2;
 			rv2 = v0;
@@ -373,7 +374,7 @@ TriangleContext PreProcessMesh(const std::vector<Vertex>& vertices, const std::v
 			// Must do 1 rotation to get the longest edge to be v2->v0
 			/*
 			v1->v2 is currently the longest. So: v2 maps to v0, v1 maps to v2, v0 maps to v1.
-			*/
+			* / 
 			rv0 = v2;
 			rv1 = v0;
 			rv2 = v1;
@@ -393,4 +394,4 @@ TriangleContext PreProcessMesh(const std::vector<Vertex>& vertices, const std::v
 	}
 
 	return context;
-}
+}*/

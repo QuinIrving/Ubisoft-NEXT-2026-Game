@@ -45,7 +45,7 @@ struct TriangleNode { // This will hopefully be able to be used with both the ba
 
 uint64_t MakeEdgeKey(uint32_t a, uint32_t b);
 
-TriangleContext PreProcessMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
+//TriangleContext PreProcessMesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
 
 
 

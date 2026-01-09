@@ -17,8 +17,8 @@ struct TriangleContext { // Again temp idea for now just so we can easily access
 	//std::vector<uint8_t> depthLevels; // index of base vertex and provides the depth level 
 	//std::unordered_map<std::pair<int, int>, int> edgeToTri; // only used for short time.
 	//std::vector<uint32_t> adjacencyTable; // initialize to total mesh triangle count with value -1. Should point to neighbour base index that is neighbour of longest edge.
-	std::unordered_map<uint64_t, std::vector<uint32_t>> adjacencyTable;
-	std::vector<Vertex> processedMesh;
+	//std::unordered_map<uint64_t, std::vector<uint32_t>> adjacencyTable;
+	//std::vector<Vertex> processedMesh;
 
 	std::vector<TriangleNode> nodePool;
 	std::deque<WorkItem> workQueue;

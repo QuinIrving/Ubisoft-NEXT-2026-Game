@@ -69,7 +69,8 @@ std::vector<Vertex> randV = {};
 std::vector<uint32_t> indices = {};
 
 Quad q = Quad(45, 20, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
-
+Model bunny;
+Model fox;
 //------------------------------------------------------------------------
 
 float mX;
@@ -78,6 +79,10 @@ Vec2<float> mousePos;
 Vec2<float> diff;
 
 Vec2<int> windowSize;
+
+std::vector<Vertex> bunnyVerts;
+std::vector<uint32_t> bunnyIndices;
+ModelAttributes ma;
 
 //------------------------------------------------------------------------
 // Called before first update. Do any initial setup here.
@@ -93,13 +98,24 @@ void Init()
 	moveForward = true;
 	q.Translate(0, 0, -2);
 
-	for (int i = 0; i < 1966; ++i) {
+	/*for (int i = 0; i < 1966; ++i) {
 		indices.push_back(i);
 		randV.push_back(Vertex(1, 2, 3));
+	}*/
+
+	//bunny = ObjectLoader::Load("./data/Models/Bunny/stanford-bunny.obj");
+	//bunny.Translate(0, 0, -2);
+	fox = ObjectLoader::Load("./data/Models/Fox/low-poly-fox.obj");
+	fox.Translate(0, 50, -55);
+	fox.Rotate(180, 90, 0);
+
+	/*bunnyVerts = bunny.GetMeshes()[0].geometry->processedMesh;
+	bunnyIndices.reserve(bunnyVerts.size());
+	for (unsigned int i = 0; i < bunnyVerts.size(); ++i) {
+		bunnyIndices.push_back(i);
 	}
 
-	ObjectLoader::Load("./data/Models/Bunny/stanford-bunny.obj");
-
+	ma.modelMatrix = bunny.GetModelMatrix();*/
 
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
@@ -216,7 +232,7 @@ void Update(const float deltaTime)
 	p.camera.RotateXY(degX, degY);
 
 	float camX = 0, camU = 0;
-	float moveSpeed = 0.07;
+	float moveSpeed = 0.47;
 
 	// Translation -> controller and keyboard same
 	if (App::GetController().GetLeftThumbStickX() > 0.5f)
@@ -278,7 +294,11 @@ void Render()
 {
 	//v1.SetColour(0, 0, 0, 255);
 	//p.Render(std::vector<Vertex>({v1, v2, v3, v4}), std::vector<uint32_t>({0, 1, 2, 1, 3, 2}), ModelAttributes());
-	p.Render(q.GetVertices(), q.GetVertexIds(), q.GetModelAttributes());
+	//p.Render(q.GetVertices(), q.GetVertexIds(), q.GetModelAttributes());
+	
+	//p.Render(bunnyVerts, bunnyIndices, ma);
+	p.Render(fox.GetMeshes(), fox.GetModelMatrix(), fox.GetAdjacencyTable());
+	
 	//App::DrawTriangle(600.0f, 300.0f, -0.5f, 1, 650.0f, 400.0f, -0.5f, 1, 700.0f, 300.0f, -0.5f, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
 	//p.Render(randV, indices, ModelAttributes());
 	//------------------------------------------------------------------------
