@@ -5,6 +5,7 @@
 #include "TriangleNode.h"
 #include <main.h>
 #include <queue>
+#include <chrono>
 
 TessellatedPipeline& TessellatedPipeline::GetInstance() {
     static TessellatedPipeline m_instance; // thread safe
@@ -36,8 +37,16 @@ TessellatedPipeline& TessellatedPipeline::GetInstance() {
 
 
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
-constexpr bool wireframe = true;
-constexpr float errorThreshold = 9999999.f;//25.0f;//1078.f;//75.f;//25.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
+constexpr bool wireframe = false;
+//constexpr float errorThreshold = 999999999.f;
+//constexpr float errorThreshold = 8.f; // okay performance
+
+constexpr float errorThreshold = 5.f; // good quality
+//constexpr float errorThreshold = 2.f; // excellent quality
+//constexpr float errorThreshold = 1.f; // near-perfect quality.
+
+//9999999.f;//25.0f;//1078.f;//75.f;//25.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
+//constexpr float errorThreshold = 5.f;
 // Should be a pipeline specific member variable that can be changed based on setting chose ^.
 constexpr float errorThresholdSq = errorThreshold * errorThreshold;
 
@@ -64,13 +73,17 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
     //vertices[3].SetColour(0, 0, 255, 255); // Turn back to const vertices.
     //auto context = PreProcessMesh(vertices, indices);
     //int breakO;
+    auto start = std::chrono::high_resolution_clock::now();
 
+    
     // Little map here so we can retrieve based on vertex index, which mesh we're within so we can get our specific material.
     std::vector<Vertex> verts; // may want to change this as something we get from model?
     for (const Mesh& mesh : meshes) {
         verts.insert(verts.end(), mesh.geometry->processedMesh.begin(), mesh.geometry->processedMesh.end());
     }
-
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    start = std::chrono::high_resolution_clock::now();
     // ---- Object -> Model -> view transform Vertex Process ---- [DONE]
     std::vector<ViewVertex> viewVerts;
     viewVerts.reserve(verts.size());
@@ -80,6 +93,10 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         viewVerts.push_back(ProcessVertex(v, modelMatrix, camera.GetViewMatrix()));
     }
 
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    start = std::chrono::high_resolution_clock::now();
     TriangleContext context;
 
     context.nodePool.reserve(viewVerts.size() / 3);
@@ -139,8 +156,9 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         context.workQueue.push_back({static_cast<int32_t>(node.baseTriIdx), node.baseTriIdx, node.nodeID}); // COULD BE AN ISSUE LATER WITH OUR POOL, MIGHT NEED A BETTER WAY FOR -1.
     }
 
-    int checkContext = 1;
-
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    start = std::chrono::high_resolution_clock::now();
     // Flow should be:
     /*
     Pop from node queue, if wants to split check if neighbour has same longest edge, if so then push itself and neighbour onto stack and set global flag toForceSplit to true.
@@ -235,7 +253,20 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         // END CULL CHECKS
 
 
-        bool shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition()) > errorThresholdSq;
+        bool shouldSplit = false;
+        Vec3<float> mid = (node.v0.GetViewPosition() + node.v2.GetViewPosition()) * 0.5f;
+        float distSq = mid.DotProduct(mid);
+
+        // extra depth checking.
+        if (distSq < 100.f) {
+            shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition(), distSq) > errorThresholdSq;
+        }
+        else if (distSq < 400.0f) {
+            shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition(), distSq) > (errorThresholdSq * 4.0f);
+        }
+        else {
+            shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition(), distSq) > (errorThresholdSq * 16.0f);
+        }
 
         // node in the nodepool seems to be fine, 
         if (!shouldSplit) {
@@ -243,7 +274,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         }
 
         // can't process the node anymore.
-        if (node.depth >= 64) {
+        if (node.depth >= TriangleNode::MAX_DEPTH) {
             continue;
         }
 
@@ -271,8 +302,8 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
     }
 
     // At this point should be able to go through the node pool and process each vertex as needed, as long as the flag is good.
-    int tester = 0;
-    int test = 2;
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
 
 
@@ -353,9 +384,31 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
             // if they exit frustum
 
 
-
+    start = std::chrono::high_resolution_clock::now();
     // ---- Vertex Shading & Lighting [TODO] ----
+    for (TriangleNode& n : context.nodePool) {
+        ViewVertex& v0 = n.v0;
+        ViewVertex& v1 = n.v1;
+        ViewVertex& v2 = n.v2;
 
+        // could do a backface cull check here as well I guess? lol
+
+        // change this to a smarter solution later when we do our PBR stuff
+        Material m = meshes[v0.GetMaterialIndex()].material;
+        /*
+        v0.SetColour(m.map_Kd->SampleNearest(v0.GetUV()));
+        v1.SetColour(m.map_Kd->SampleNearest(v1.GetUV()));
+        v2.SetColour(m.map_Kd->SampleNearest(v2.GetUV()));
+        */
+        ///*
+        v0.SetColour(m.map_Kd->SampleBilinear(v0.GetUV()));
+        v1.SetColour(m.map_Kd->SampleBilinear(v1.GetUV()));
+        v2.SetColour(m.map_Kd->SampleBilinear(v2.GetUV()));
+        //*/
+    }
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    start = std::chrono::high_resolution_clock::now();
     
     // ---- Apply Projection ----[DONE]
     std::vector<ProjectionVertex> projectionVertices;
@@ -367,7 +420,9 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         projectionVertices.push_back(ProjectVertex(n.v2));
     }
 
-    int breakB = 1;
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    start = std::chrono::high_resolution_clock::now();
 
     // ---- ClipSpace Cull & near-plane clipping [TODO] -> do before perspective divide. ----
 
@@ -391,13 +446,17 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         finalVertices.push_back(HomogenizeAndViewportMap(v1));
         finalVertices.push_back(HomogenizeAndViewportMap(v2));
     }
-    int breakC = 1;
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
+    start = std::chrono::high_resolution_clock::now();
     // ---- Submit to API ---- [DONE]
     for (int i = 0; i < finalVertices.size(); i += 3) {
         SubmitTriangle(finalVertices[i], finalVertices[i + 1], finalVertices[i + 2], wireframe);
     }
-    
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    int ta = 0;
 }
 
 ViewVertex TessellatedPipeline::ProcessVertex(const Vertex& v, const Mat4<float> M, const Mat4<float> V) const {
@@ -411,7 +470,7 @@ ViewVertex TessellatedPipeline::ProcessVertex(const Vertex& v, const Mat4<float>
 
     Vec4<float> viewTangent = Vec4<float>(v.GetTangent(), 0) * M * V;
 
-    return ViewVertex(worldPos, viewPos, worldNormal, viewNormal, viewTangent, v.GetUV(), v.GetColour(), v.GetMeshIndex(), v.GetMaterialIndex(), v.GetUniqueIndex());
+    return ViewVertex(worldPos, viewPos, worldNormal, viewNormal, viewTangent, v.GetUV(), /*v.GetColour()*/ Colour(), v.GetMeshIndex(), v.GetMaterialIndex(), v.GetUniqueIndex());
 }
 
 ProjectionVertex TessellatedPipeline::ProjectVertex(const ViewVertex& v) const {
@@ -454,18 +513,25 @@ void TessellatedPipeline::SubmitTriangle(const ScreenSpaceVertex& v1, const Scre
     
 }
 
-float TessellatedPipeline::CalculateSSE(Vec3<float> v0, Vec3<float> v2) const {
+float TessellatedPipeline::CalculateSSE(Vec3<float> v0, Vec3<float> v2, float distSq) const {
     float edgeLenSq = (v2 - v0).GetMagnitudeSquared();
 
-    Vec3 mid = (v2 + v0) * 0.5f;
-    float distSq = mid.DotProduct(mid);
+    const float MIN_DIST_SQ = 4.0f;
+    distSq = std::max<float>(distSq, MIN_DIST_SQ);
+
+    static float focalLenSq = -1.0f;
+    if (focalLenSq < 0.0f) {
+        float focal = (static_cast<float>(WINDOW_HEIGHT) / 2.f) / m_yScale;
+        focalLenSq = focal * focal;
+    }
+    /*
     if (distSq < EPSILON) {
         distSq = EPSILON;
-    }
+    }*/
 
     // Could move some of this focal stuff out to be calculated and recalcualted on resize of window
-    float focalLenSq = (static_cast<float>(WINDOW_HEIGHT) / 2.f) / m_yScale;
-    focalLenSq *= focalLenSq;
+    //float focalLenSq = (static_cast<float>(WINDOW_HEIGHT) / 2.f) / m_yScale;
+    //focalLenSq *= focalLenSq;
 
     return (edgeLenSq / distSq) * focalLenSq;
 }

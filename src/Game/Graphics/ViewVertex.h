@@ -2,11 +2,12 @@
 #include "Math/Vec2.h"
 #include "Math/Vec3.h"
 #include "Math/Vec4.h"
+#include "Graphics/Colour.h"
 
 class ViewVertex {
 public:
 	ViewVertex() = default;
-	ViewVertex(Vec3<float> worldPos, Vec3<float> viewPos, Vec3<float> worldNormal, Vec3<float> viewNormal, Vec3<float> viewTangent, Vec2<float> uv, Vec4<float> colour, uint32_t meshIndex, uint32_t materialIndex, uint32_t uniqueIndex)
+	ViewVertex(Vec3<float> worldPos, Vec3<float> viewPos, Vec3<float> worldNormal, Vec3<float> viewNormal, Vec3<float> viewTangent, Vec2<float> uv, Colour colour, uint32_t meshIndex, uint32_t materialIndex, uint32_t uniqueIndex)
 		: m_worldPosition(worldPos), m_viewPosition(viewPos), m_worldNormal(worldNormal), m_viewNormal(viewNormal), m_viewTangent(viewTangent), m_UV(uv), m_colour(colour), m_meshIndex(meshIndex), m_materialIndex(materialIndex), m_uniqueIndex(uniqueIndex) {};
 
 	//Vec4<float> operator*(const Mat4<float>& rhs) const { return m_position * rhs; }
@@ -17,12 +18,13 @@ public:
 	const Vec3<float>& GetViewNormal() const { return m_viewNormal; }
 	const Vec3<float>& GetViewTangent() const { return m_viewTangent; }
 	const Vec2<float>& GetUV() const { return m_UV; }
-	const Vec4<float>& GetColour() const { return m_colour; }
+	const Colour& GetColour() const { return m_colour; }
 	uint32_t GetMeshIndex() const { return m_meshIndex; }
 	uint32_t GetUniqueIndex() const { return m_uniqueIndex; }
 	uint32_t GetMaterialIndex() const { return m_materialIndex; }
 
 	void SetColour(int r, int g, int b, int a = 255) { m_colour = {r / 255.f, g / 255.f, b / 255.f, a / 255.f}; }
+	void SetColour(Colour c) { m_colour = c; }
 
 	void SetMeshIndex(uint32_t meshIndex) { m_meshIndex = meshIndex; }
 	void SetUniqueIndex(uint32_t index) { m_uniqueIndex = index; }
@@ -39,7 +41,7 @@ private:
 	Vec3<float> m_viewTangent;
 
 	Vec2<float> m_UV;
-	Vec4<float> m_colour;
+	Colour m_colour;
 
 
 	uint32_t m_meshIndex; // for tessellation

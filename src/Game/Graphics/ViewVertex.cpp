@@ -13,7 +13,7 @@ ViewVertex ViewVertex::EdgeMidpointInterpolate(ViewVertex& a, ViewVertex& b) {
 	//Vec3<float> viewTangent = (a.GetViewTangent() + b.GetViewTangent()).Normalize();
 
 	Vec2<float> UV = (a.GetUV() + b.GetUV()) * 0.5f;
-	Vec4<float> colour = (a.GetColour() + b.GetColour()) * 0.5f;
+	Colour colour = (a.GetColour() + b.GetColour()) * 0.5f;
 
 	//uint32_t meshIndex = 0; // at this point don't think it matters
 	//uint32_t uniqueIndex = 0; // same as above

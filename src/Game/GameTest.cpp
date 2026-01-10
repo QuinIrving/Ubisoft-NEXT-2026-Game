@@ -106,8 +106,9 @@ void Init()
 	//bunny = ObjectLoader::Load("./data/Models/Bunny/stanford-bunny.obj");
 	//bunny.Translate(0, 0, -2);
 	fox = ObjectLoader::Load("./data/Models/Fox/low-poly-fox.obj");
-	fox.Translate(0, 50, -55);
+	fox.Translate(0, 15, -55);
 	fox.Rotate(180, 90, 0);
+	fox.Scale(0.25);
 
 	/*bunnyVerts = bunny.GetMeshes()[0].geometry->processedMesh;
 	bunnyIndices.reserve(bunnyVerts.size());

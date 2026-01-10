@@ -1,7 +1,7 @@
 #include <fstream>
 #include <cstddef>
 #include "ObjectLoader.h"
-
+#include <Graphics/Material.h>
 
 namespace ObjectLoader {
 	std::unordered_map<std::string, Model> objectMap;
@@ -84,9 +84,6 @@ namespace
 	}
 
 	void ProcessMTL(const std::string& path) {
-		/*if (ObjectLoader::textureMap.find(path) != ObjectLoader::textureMap.end()) {
-			
-		}*/
 		std::ifstream file{ path };
 
 		if (!file) {
@@ -207,7 +204,12 @@ namespace
 			}
 			else if (prefix == "map_Kd") {
 				// Texture loader needs to check if we already have the texture stored, if not to generate it, store it, and then finally share it to material
+				if (TextureLoader::textureMap.find(data) == TextureLoader::textureMap.end()) {
+					TextureLoader::textureMap[data] = TextureLoader::ProcessTGA(path.substr(0, path.find_last_of('/') + 1) + data);
+				}
 
+				m.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap[data]);
+				continue;
 			}
 			else if (prefix == "map_Ks") {
 				// Texture loader needs to check if we already have the texture stored, if not to generate it, store it, and then finally share it to material
@@ -449,7 +451,7 @@ Model ObjectLoader::Load(const std::string& path) {
 		}
 		else if (prefix == "usemtl") {
 			// Get the material from the hashmap and apply it to the new mesh object in g.
-
+			mesh.material = ObjectLoader::materialMap[data];
 			continue;
 		}
 	}

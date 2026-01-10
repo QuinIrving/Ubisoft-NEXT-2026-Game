@@ -8,7 +8,7 @@ struct Colour {
 	Colour(Vec3<float> v, float a) : r(v.x), g(v.y), b(v.z), a(a) {};
 	Colour(Vec4<float> v) : r(v.x), g(v.y), b(v.z), a(v.w) {};
 
-	Colour operator*(float scale) {
+	Colour operator*(float scale) const {
 		return Colour(r * scale, g * scale, b * scale, a);
 	}
 
@@ -18,6 +18,10 @@ struct Colour {
 		b *= scale;
 
 		return *this;
+	}
+
+	Colour operator+(const Colour& rhs) const {
+		return Colour(r + rhs.r, g + rhs.g, b + rhs.b, a + rhs.a);
 	}
 
 	Vec3<float> GetVectorizedRGB() const {

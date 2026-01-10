@@ -1,10 +1,11 @@
 #pragma once
 #include "Math/Vec2.h"
 #include "Math/Vec3.h"
+#include "Graphics/Colour.h"
 
 class ScreenSpaceVertex {
 public:
-	ScreenSpaceVertex(Vec2<float> screenPos, float z, float w, Vec3<float> colour) : m_screenPosition(screenPos), z(z), w(w), m_colour(colour) {};
+	ScreenSpaceVertex(Vec2<float> screenPos, float z, float w, Colour colour) : m_screenPosition(screenPos), z(z), w(w), m_colour({ colour.r, colour.g, colour.b }) {};
 
 	//Vec4<float> operator*(const Mat4<float>& rhs) const { return m_position * rhs; }
 

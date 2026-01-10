@@ -1,9 +1,10 @@
 #pragma once
 #include <string>
 #include <unordered_map>
-#include "Graphics/ModelAttributes.h"
+#include "Graphics/Material.h"
 #include "Objects/Model.h"
 #include "Objects/Mesh.h"
+#include "TextureLoader.h"
 
 // WE want to read in the obj file. If it references an .mtl file, we also read that, then we check that against our hashmap, if it hasn't already been created, we make each material,
 // then we can retrieve the material proprties for a submesh when we read in the usemtl it wants to use.
@@ -28,7 +29,6 @@ Skip sections where there is a #, should read up to that point, and don't give a
 
 namespace ObjectLoader {
 	extern std::unordered_map<std::string, Model> objectMap;
-	extern std::unordered_map<std::string, Texture> textureMap;
 	extern std::unordered_map<std::string, Material> materialMap;
 
 	Model Load(const std::string& path);

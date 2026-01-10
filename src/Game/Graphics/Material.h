@@ -1,47 +1,9 @@
 #pragma once
 #include <optional>
 #include <memory>
-#include "Math/Mat4.h"
-#include "Math/Vec4.h"
+#include "Math/Vec3.h"
 #include "Texture.h"
-#include "Objects/Mesh.h"
 
-enum class TextureSamplingMode {
-	Nearest,
-	Bilinear,
-	// Trilinear?
-};
-
-enum class LightingModel {
-	None,
-	Flat,
-	Gouraud,
-	PBR,
-	// half lambert?
-};
-
-struct MaterialOld { // Probably need to refactor this lol!!!!
-	Vec4<float> baseColour{ 1.f, 1.f, 1.f, 1.f };
-	// albedoTexture is also used for regular texture mapping
-	std::optional<const Texture*> albedoTexture; // if we aren't doing any sharedpointer and all of that with the texture manager, else we can do a weak_ptr.
-
-	TextureSamplingMode samplingMode = TextureSamplingMode::Nearest;
-	LightingModel lightingModel = LightingModel::None;
-
-	// BlinnPhong param
-	float shininess = 32.f; // specular exponent
-
-	// PBR params
-	float metallic = 0.f; // 0<->1, where 1 is 100% metallic, and 0 is non-metal.
-	float roughness = 0.5f; // 0<->1, where 0 is smooth, and 1 is rough.
-	Vec3<float> emissiveColour{ 0.f, 0.f, 0.f };
-	std::optional<const Texture*> metallicRoughnessMap; // Combined, may need to add in a separated version if needed.
-	std::optional<const Texture*> normalMap; // DOn't really think we need due to using displacement map and calculating normals, but will see.
-	std::optional<const Texture*> emissiveMap;
-	std::optional<const Texture*> ambientOcclusionMap;
-};
-
-/*
 struct Material {
 	
 	Vec3<float> Ka; // Ambient colour, colour when lit by ambient light only
@@ -51,7 +13,7 @@ struct Material {
 	unsigned int illum; // Determines lighting equation to use ~ 0: colour only & no lighting, 1: Diffuse only, 2: Diffuse & Specular, 3-10 Various other types (reflection, refraction, etc)
 	float d; // Disolve/Opacity 0.0 (transparent) -> 1.0 (opaque)
 	float Ns; // Specular exponent - Shininess value, higher means sharper highlights, lower mean high roughness.
-	int sharpness; // Reflection sharpness
+	int sharpness = -1; // Reflection sharpness
 	float Ni; // Optical density (Index of Refraction)
 	
 	std::shared_ptr<Texture> map_Ka; // Ambient texture, either same as albedo or not used
@@ -91,20 +53,5 @@ struct Material {
 	* -mm (mipmap) base and gain values for mipmap filtering
 	* -bm (bump multiplier) Strength of bump map effect
 	* 
-	* /
-};*/
-
-
-struct ModelAttributes {
-	static uint32_t currentNumObjects;
-
-	uint32_t uniqueObjectIndex;
-	Mat4<float> modelMatrix;
-	//std::vector<Mesh>& meshes = {};
-	//std::shared_ptr<Material> material; // Should setup our textures, and our materials on loadup, then each model can point to one
-	//Material material; // for simplicity at the start I'll do this.
-
-	 // This is so for each object created, it should be unique
-
-	ModelAttributes() { uniqueObjectIndex = currentNumObjects; currentNumObjects++; }
+	*/
 };
