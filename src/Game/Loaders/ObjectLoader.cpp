@@ -2,6 +2,7 @@
 #include <cstddef>
 #include "ObjectLoader.h"
 #include <Graphics/Material.h>
+#include <Graphics/Pipeline.h>
 
 namespace ObjectLoader {
 	std::unordered_map<std::string, Model> objectMap;
@@ -301,7 +302,7 @@ Model ObjectLoader::Load(const std::string& path) {
 				throw std::runtime_error("The obj file being read contains vertices that aren't just 3 pieces of data: " + path);
 			}
 			
-			objVertices.push_back({ std::stof(stringVerts[0]), std::stof(stringVerts[1]), std::stof(stringVerts[2]) });
+			objVertices.push_back({ std::stof(stringVerts[0]) * Pipeline::SCENE_SCALE, std::stof(stringVerts[1]) * Pipeline::SCENE_SCALE, std::stof(stringVerts[2]) * Pipeline::SCENE_SCALE });
 		}
 		else if (prefix == "vt") {
 			std::vector<std::string> stringUVs = extractData(data, delimiter);

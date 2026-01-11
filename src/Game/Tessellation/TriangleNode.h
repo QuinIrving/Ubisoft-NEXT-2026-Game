@@ -11,10 +11,14 @@ struct MeshPosition {
 	Vec3<float> position{};
 };
 
+namespace NodeDepth {
+	extern int MAX_DEPTH;
+}
+
 // This is simply for the first pass, so we only interpolate the position, and don't need to worry about the rest, while we see how deep we need to go in terms of splitting
 struct TriangleNode { // This will hopefully be able to be used with both the base triangle node, as well as the split children of it.
-	TriangleNode() : nodeID(0), /*heapIndex(-1),*/ baseTriIdx(0), depth(0), v0(), v1(), v2() {};
-	static const int MAX_DEPTH = 8;
+	TriangleNode() : nodeID(0), baseTriIdx(0), depth(0), v0(), v1(), v2() {};
+	//static int MAX_DEPTH;
 
 	uint64_t nodeID = 1; // Bitwise ID starts at 1.
 	int32_t neighbours[3] = { -1, -1, -1 }; // nodepool index values

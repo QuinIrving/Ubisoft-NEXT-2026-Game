@@ -1,18 +1,32 @@
 #include "QuadMesh.h"
 #include "Graphics/Triangle.h"
+#include <Graphics/Pipeline.h>
 
 QuadMesh::QuadMesh(float width, float height, Vec4<float> colour) {
-	m_vertices.reserve(4);
-	m_vertexIds.reserve(6);
+	m_vertices.reserve(6);
+	//m_vertexIds.reserve(6);
 
-	float wOver2 = width / 2.f;
-	float hOver2 = height / 2.f;
+	float wOver2 = (width / 2.f) * Pipeline::SCENE_SCALE;
+	float hOver2 = (height / 2.f) * Pipeline::SCENE_SCALE;
 
-	m_vertices.push_back(Vertex({ -wOver2, -hOver2, 0 }, colour, { 0, 0, 1 }, {0, 0}));
-	m_vertices.push_back(Vertex({ wOver2, -hOver2, 0 }, colour, { 0, 0, 1 }, { 1, 0 }));
-	m_vertices.push_back(Vertex({ -wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 0, 1 }));
-	m_vertices.push_back(Vertex({ wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 1, 1 }));
 
+	m_vertices.push_back(Vertex({ -wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 0, 1 }, {}, 0.f, 1));
+	m_vertices.push_back(Vertex({ -wOver2, -hOver2, 0 }, colour, { 0, 0, 1 }, { 0, 0 }, {}, 0.f, 0)); 
+	m_vertices.push_back(Vertex({ wOver2, -hOver2, 0 }, colour, { 0, 0, 1 }, { 1, 0 }, {}, 0.f, 2));
+
+	m_vertices.push_back(Vertex({wOver2, -hOver2, 0}, colour, {0, 0, 1}, {1, 0}, {}, 0.f, 2));
+	m_vertices.push_back(Vertex({ wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 1, 1 }, {}, 0.f, 3));
+	m_vertices.push_back(Vertex({ -wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 0, 1 }, {}, 0.f, 1));
+
+	m_vertices[0].SetMaterialIndex(0);
+	m_vertices[1].SetMaterialIndex(0);
+	m_vertices[2].SetMaterialIndex(0);
+	m_vertices[3].SetMaterialIndex(0);
+	m_vertices[4].SetMaterialIndex(0);
+	m_vertices[5].SetMaterialIndex(0);
+
+	//m_vertices.push_back(Vertex({ wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 1, 1 }));
+	/*
 	m_vertexIds = { 0, 2, 1, 1, 2, 3 };
 
 	for (int i = 0; i < m_vertexIds.size(); i += 3) {
@@ -24,6 +38,7 @@ QuadMesh::QuadMesh(float width, float height, Vec4<float> colour) {
 
 		float f = 1.0f / (dUV1.x * dUV2.y - dUV2.x * dUV1.y);
 
+		
 		Vec3<float> tangent = (edge1 * dUV2.y - edge2 * dUV1.y) * f;
 		tangent = tangent.GetNormalized();
 		Vec3<float> bitangent = (edge1 * -dUV2.x + edge2 * dUV1.x) * f;
@@ -37,7 +52,7 @@ QuadMesh::QuadMesh(float width, float height, Vec4<float> colour) {
 
 		m_vertices[m_vertexIds[i + 2]].SetTangent(tangent);
 		m_vertices[m_vertexIds[i + 2]].SetTangentW((m_vertices[m_vertexIds[i + 2]].GetNormal().CrossProduct(tangent).DotProduct(bitangent)) < 0.0f ? -1.0f : 1.0f);
-	}
+	}*/
 }
 
 void QuadMesh::SetVertexNormals() {

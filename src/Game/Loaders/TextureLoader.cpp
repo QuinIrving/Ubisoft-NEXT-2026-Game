@@ -180,3 +180,41 @@ Texture TextureLoader::ProcessTGA(std::string& path) {
 
 	return t;
 }
+
+void TextureLoader::GenerateTextureTopology(std::string& texturePath) {
+	// First read in the general TGA texture to get the pixel data
+	Texture t = ProcessTGA(texturePath);
+
+	// Now apply the Anisotropic Kuwahara Filter on the texture to try to denoise it (and keep edge lines which are important)
+	// Anisotropic Kuwahara filter (with polynomial weights) [TODO]
+	/*
+	
+	
+	*/
+
+
+
+	//  Do LAB conversion, Quantize it with our set of colours (16) [WE SHOULD HAVE A DIRECT INITIALIZED COLOUR LIST PALETTE FOR OURSELVES), and tile the pixels for SIMD
+
+
+	// Process the quantized tiles with SIMD for if they all are the same quantized colour, if so then keep going until we find edge points (where it stops), same with the other colours.
+	// We then merge the edge points into the polygon with the largest area
+
+
+	// Apply Douglas peucker simplification, ^ may have to be before the merging of edge points
+
+
+	// Finally Do a max area triangulation of the polygon (it's alright if we reduce the points more strongly, as later on we sample towards center of triangle)
+	// Either ear-clipping or if need be for speed -> constrained delaunay triangulation
+
+
+	// In the actual pipeline probably specifically for quads, spheres, cubes, and cylinders (generated instead of OBJ loaded) we will generate vertices based on interpolated distance from UV on
+	// View position and, then we can properly apply and sample in our textures (again for all of our samples, since they are vertices they share them with other triangles, so to get the most
+	// out of our number of vertices, we will sample ~15% towards the center of the triangle relative to the vertex we are sampling to ensure each triangle has different colours, and doesn't blend
+	// between two distinc colours (edges), and we can also apply displacement and generally be fine ( don't forget to re-calculate normals), and to apply vertex lighting.
+
+
+	// May also want to look into triplanar mapping for my scenarios.
+
+
+}

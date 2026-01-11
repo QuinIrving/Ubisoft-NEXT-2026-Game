@@ -71,6 +71,47 @@ namespace App
 		glEnd();
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glDisable(GL_DEPTH_TEST);
+		
+		/*glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_TRUE);
+
+		glDisable(GL_BLEND);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+		glBegin(GL_TRIANGLES);
+		glColor3f(r1, g1, b1);
+		glVertex4f(point1X, point1Y, p1z, p1w);
+
+		glColor3f(r2, g2, b2);
+		glVertex4f(point2X, point2Y, p2z, p2w);
+
+		glColor3f(r3, g3, b3);
+		glVertex4f(point3X, point3Y, p3z, p3w);
+		glEnd();
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glEnable(GL_POLYGON_OFFSET_LINE);
+		glPolygonOffset(-1.0f, -1.0f); // avoid z-fighting
+
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glLineWidth(1.0f);
+
+		glBegin(GL_TRIANGLES);
+		glColor4f(1.0f, 1.0f, 1.0f, 0.4f); // semi-transparent wireframe
+
+		glVertex4f(point1X, point1Y, p1z, p1w);
+		glVertex4f(point2X, point2Y, p2z, p2w);
+		glVertex4f(point3X, point3Y, p3z, p3w);
+		glEnd();
+
+		glDisable(GL_POLYGON_OFFSET_LINE);
+		glDisable(GL_BLEND);
+
+		// Restore state
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glDisable(GL_DEPTH_TEST);*/
 	}
 
 	CSimpleSprite* CreateSprite(const char* fileName, const int columns, const int rows)

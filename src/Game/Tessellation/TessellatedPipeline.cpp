@@ -6,6 +6,7 @@
 #include <main.h>
 #include <queue>
 #include <chrono>
+#include <sstream>
 
 TessellatedPipeline& TessellatedPipeline::GetInstance() {
     static TessellatedPipeline m_instance; // thread safe
@@ -39,11 +40,12 @@ TessellatedPipeline& TessellatedPipeline::GetInstance() {
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
 constexpr bool wireframe = false;
 //constexpr float errorThreshold = 999999999.f;
+//constexpr float errorThreshold = 32.f;
+//constexpr float errorThreshold = 16.f;
 //constexpr float errorThreshold = 8.f; // okay performance
-
-constexpr float errorThreshold = 5.f; // good quality
-//constexpr float errorThreshold = 2.f; // excellent quality
-//constexpr float errorThreshold = 1.f; // near-perfect quality.
+//constexpr float errorThreshold = 4.f; // good quality
+constexpr float errorThreshold = 2.f; // excellent quality
+////constexpr float errorThreshold = 1.f; // near-perfect quality.
 
 //9999999.f;//25.0f;//1078.f;//75.f;//25.0f; // This is where our quality settings should be able to reduce this down smaller to get smaller triangles.
 //constexpr float errorThreshold = 5.f;
@@ -52,6 +54,7 @@ constexpr float errorThresholdSq = errorThreshold * errorThreshold;
 
 //void TessellatedPipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) {
 void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<float>& modelMatrix, const ModelEdge& edges) {
+    doOnce = true;
     // Pretend Camera and Lights [DOING]
     //Mat4<float> cameraView = Mat4<float>::GetIdentity();
 
@@ -98,6 +101,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
 
     start = std::chrono::high_resolution_clock::now();
     TriangleContext context;
+    //context.Initialize(viewVerts.size());
 
     context.nodePool.reserve(viewVerts.size() / 3);
     context.urgentStack.reserve(16); // Just a baseline to initialize some simple memory, shouldn't really reach this large of a chain too often.
@@ -122,6 +126,8 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         uint32_t mIdx0 = viewVerts[i].GetMeshIndex();
         uint32_t mIdx1 = viewVerts[i + 1].GetMeshIndex();
         uint32_t mIdx2 = viewVerts[i + 2].GetMeshIndex();
+
+        //node.longestEdgeID = ((uint64_t)node.baseTriIdx << 32) | 2;
 
         //node.neighbourBaseTriangleIdx[0] = -1;
         node.neighbours[0] = -1;
@@ -158,7 +164,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
 
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    start = std::chrono::high_resolution_clock::now();
+    
     // Flow should be:
     /*
     Pop from node queue, if wants to split check if neighbour has same longest edge, if so then push itself and neighbour onto stack and set global flag toForceSplit to true.
@@ -173,10 +179,36 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
     */
 
     // ---- Dynamic tessellation [DONE] ----
+    /*std::chrono::nanoseconds urgentStackTime{};
+    std::chrono::nanoseconds workQueueTime{};
+    std::chrono::nanoseconds edgeCheckTime{};
+    std::chrono::nanoseconds splitTime{};
 
+    int urgentStackIterations = 0;
+    int workQueueIterations = 0;
+    int edgeChecks = 0;
+    int singleSplits = 0;
+    int diamondSplits = 0;*/
+
+    App::Print(10, 180, ("Camera world pos: (" + std::to_string(camera.GetPosition().x) + ", " + std::to_string(camera.GetPosition().y) + ", " + std::to_string(camera.GetPosition().z) + ")").c_str());
+    /*printf("Camera world pos: (%.2f, %.2f, %.2f)\n",
+        cameraPosition.x, cameraPosition.y, cameraPosition.z);*/
+
+    // Print first vertex in view space:
+    Vec3<float> testVertex = { 0.0f, 0.0f, 0.0f }; // World origin
+    Vec3<float> testView = testVertex * camera.GetViewMatrix();
+    App::Print(10, 140, ("World origin in view space: (" + std::to_string(testView.x) + ", " + std::to_string(testView.y) + ", " + std::to_string(testView.z) + ")").c_str());
+    /*printf("World origin in view space: (%.2f, %.2f, %.2f)\n",
+        testView.x, testView.y, testView.z);*/
+
+    start = std::chrono::high_resolution_clock::now();
     bool forceSplit = false;
     while (!context.workQueue.empty()) {
+        //auto urgentStart = std::chrono::high_resolution_clock::now();
+
         while (!context.urgentStack.empty()) {
+            //urgentStackIterations++;
+
             WorkItem work = context.urgentStack.back();
             TriangleNode& node = context.nodePool[work.nodeIdx];
 
@@ -187,18 +219,26 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
 
                 // This means neighbour on this edge is invalid and we don't need to diamond split, only do a split on itself
                 if (node.neighbours[2] == -1) {
+                    //auto splitStart = std::chrono::high_resolution_clock::now();
+
                     if (context.urgentStack.empty()) {
                         // if the stack is now empty, it means there was only us on the stack, so we can simply split ourselves on that edge, and get out
                         // split this node and push to work queue
                         TriangleNode::SingleSplitAndMatchNeighbour(context, work.nodeIdx, -1);
+                        //singleSplits++;
                     }
                     else {
                         // stack is not empty, so we have a dependency waiting for one of our 2 childs (specifically the one matching the other's edge.
                         // Split this node and add the 1 child to the stack that is the same longest edge as whats currently on the back
                         TriangleNode::SingleSplitAndMatchNeighbour(context, work.nodeIdx, context.urgentStack.back().nodeIdx);
+                        //singleSplits++;
                     }
+
+                    //splitTime += std::chrono::high_resolution_clock::now() - splitStart;
                     continue;
                 }
+
+                //auto splitStart = std::chrono::high_resolution_clock::now();
 
                 WorkItem dependentWork = context.urgentStack.back();
                 TriangleNode& dependentNode = context.nodePool[dependentWork.nodeIdx];
@@ -208,12 +248,16 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
                 if (context.urgentStack.empty()) {
                     // split 4 and push to work queue
                     TriangleNode::DiamondSplit(context, work.nodeIdx, dependentWork.nodeIdx, -1);
+                    //diamondSplits++;
+                    //splitTime += std::chrono::high_resolution_clock::now() - splitStart;
                     continue;
                 }
 
                 //otherwise, split on all 4 nodes and Dependent node is the node we are actually going to have 1 of the children matching the longest edge of the node at the back of the stack
                 // split 4, and push 1 of the dependentNode's child's onto the stack that has the same longest edge as whats currently on the back.
                 TriangleNode::DiamondSplit(context, work.nodeIdx, dependentWork.nodeIdx, context.urgentStack.back().nodeIdx);
+                //diamondSplits++;
+                //splitTime += std::chrono::high_resolution_clock::now() - splitStart;
                 continue;
             }
 
@@ -225,18 +269,34 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
 
             TriangleNode& neighbour = context.nodePool[node.neighbours[2]];
 
-            if (TriangleContext::HaveSameLongestEdge(node, neighbour)) {
-                // Technically, since let's say A depends on B, but B depends on C and vice versa there. Then if that's the case, we first must split
-                // B & C, and then the child of B whose edge is the same as A now should be on the stack to be force split instead.
+            //auto edgeStart = std::chrono::high_resolution_clock::now();
+            bool sameLongestEdge = TriangleContext::HaveSameLongestEdge(node, neighbour);
+            //edgeCheckTime += std::chrono::high_resolution_clock::now() - edgeStart;
+            //edgeChecks++;
+
+            if (sameLongestEdge) {
                 context.urgentStack.push_back({ node.neighbours[2], neighbour.baseTriIdx, neighbour.nodeID });
                 forceSplit = true;
                 continue;
             }
 
+            /*if (TriangleContext::HaveSameLongestEdge(node, neighbour)) {
+                // Technically, since let's say A depends on B, but B depends on C and vice versa there. Then if that's the case, we first must split
+                // B & C, and then the child of B whose edge is the same as A now should be on the stack to be force split instead.
+                context.urgentStack.push_back({ node.neighbours[2], neighbour.baseTriIdx, neighbour.nodeID });
+                forceSplit = true;
+                continue;
+            }*/
+
             // If they don't share the same longest edge, need to keep going down the triangle dependency chain
             context.urgentStack.push_back({ node.neighbours[2], neighbour.baseTriIdx, neighbour.nodeID });
         }
+
+        //urgentStackTime += std::chrono::high_resolution_clock::now() - urgentStart;
         forceSplit = false;
+
+        //auto workStart = std::chrono::high_resolution_clock::now();
+        //workQueueIterations++;
 
         WorkItem newWork = context.workQueue.front();
         context.workQueue.pop_front();
@@ -245,6 +305,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
 
         // check if this is old queued node, if so we can safely skip re-processing it.
         if (node.nodeID != newWork.nodeId || node.baseTriIdx != newWork.baseTriIdx) {
+            //workQueueTime += std::chrono::high_resolution_clock::now() - workStart;
             continue;
         }
 
@@ -255,10 +316,21 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
 
         bool shouldSplit = false;
         Vec3<float> mid = (node.v0.GetViewPosition() + node.v2.GetViewPosition()) * 0.5f;
-        float distSq = mid.DotProduct(mid);
+        float angleFactor = CalculateAngleFactor(node, { 0, 0, -1 });
 
+        float distSq = mid.DotProduct(mid);
+        if (doOnce) {
+            App::Print(10, 380, ("v0: (" + std::to_string(node.v0.GetViewPosition().x) + ", " + std::to_string(node.v0.GetViewPosition().y) + ", " + std::to_string(node.v0.GetViewPosition().z)).c_str());
+            App::Print(10, 340, ("mid: (" + std::to_string(mid.x) + ", " + std::to_string(mid.y) + ", " + std::to_string(mid.z)).c_str());
+            App::Print(10, 300, ("distSq: " + std::to_string(distSq) + ", angleFactor: " + std::to_string(angleFactor)).c_str());
+        }
+        
+        float angleWeight = pow(angleFactor, 0.5f);
+        angleWeight = std::max<float>(0.1f, angleWeight);
+        shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition(), distSq) * angleWeight > errorThresholdSq;
+        //shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition(), distSq) * angleFactor > errorThresholdSq;
         // extra depth checking.
-        if (distSq < 100.f) {
+        /*if (distSq < 100.f) {
             shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition(), distSq) > errorThresholdSq;
         }
         else if (distSq < 400.0f) {
@@ -266,15 +338,17 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         }
         else {
             shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition(), distSq) > (errorThresholdSq * 16.0f);
-        }
+        }*/
 
         // node in the nodepool seems to be fine, 
         if (!shouldSplit) {
+           // workQueueTime += std::chrono::high_resolution_clock::now() - workStart;
             continue;
         }
 
         // can't process the node anymore.
-        if (node.depth >= TriangleNode::MAX_DEPTH) {
+        if (node.depth >= NodeDepth::MAX_DEPTH) {
+            //workQueueTime += std::chrono::high_resolution_clock::now() - workStart;
             continue;
         }
 
@@ -283,28 +357,50 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
             context.urgentStack.push_back(newWork);
             //singleSplit = true; // this tells it we have no neighbour to worry about so don't worry about an empty node
             forceSplit = true;
+            //workQueueTime += std::chrono::high_resolution_clock::now() - workStart;
             continue;
         }
 
         TriangleNode& neighbourNode = context.nodePool[node.neighbours[2]];
         // If our neighbour is at depth 64, we can't split anymore.
-        if (neighbourNode.depth >= 64) {
+        if (neighbourNode.depth >= NodeDepth::MAX_DEPTH) {
+            //workQueueTime += std::chrono::high_resolution_clock::now() - workStart;
             continue;
         }
 
+        //auto edgeStart = std::chrono::high_resolution_clock::now();
         forceSplit = TriangleContext::HaveSameLongestEdge(node, neighbourNode);
+        //edgeCheckTime += std::chrono::high_resolution_clock::now() - edgeStart;
+        //edgeChecks++;
 
         // If we reach here, we know our node needs to split, and therefore so does the neighbour. If forceSplit is false here, then it means our neighbour has a different longest edge than us
         // and therefore, should keep going down a dependency chain until a diamond is found.
         context.urgentStack.push_back(newWork);
         context.urgentStack.push_back({ node.neighbours[2], neighbourNode.baseTriIdx, neighbourNode.nodeID });
-        continue;
+        
+        //workQueueTime += std::chrono::high_resolution_clock::now() - workStart;
     }
+
+    std::stringstream ss;
+    /*ss << "=== TESSELLATION PROFILE ===\n";
+    ss << "Urgent stack iterations: " << urgentStackIterations
+        << " (" << urgentStackTime.count() / 1e6 << " ms)\n";
+    ss << "Work queue iterations: " << workQueueIterations
+        << " (" << workQueueTime.count() / 1e6 << " ms)\n";
+    ss << "Edge checks: " << edgeChecks
+        << " (" << edgeCheckTime.count() / 1e6 << " ms, avg: "
+        << (edgeChecks > 0 ? edgeCheckTime.count() / (double)edgeChecks : 0) << " ns)\n";
+    ss << "Split time: " << splitTime.count() / 1e6 << " ms\n";
+    ss << "  - Single splits: " << singleSplits << "\n";
+    ss << "  - Diamond splits: " << diamondSplits << "\n";
+    ss << "Total: " << (urgentStackTime.count() + workQueueTime.count()) / 1e6 << " ms\n";*/
+
+    OutputDebugString(ss.str().c_str());
 
     // At this point should be able to go through the node pool and process each vertex as needed, as long as the flag is good.
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
+    App::Print(10, 680, ("Tessellation Time: " + std::to_string(duration.count()) + " ms").c_str(), 1.f, 0.5f, 0.2f);
 
 
 
@@ -384,12 +480,18 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
             // if they exit frustum
 
 
+    doOnce = true;
     start = std::chrono::high_resolution_clock::now();
     // ---- Vertex Shading & Lighting [TODO] ----
     for (TriangleNode& n : context.nodePool) {
         ViewVertex& v0 = n.v0;
         ViewVertex& v1 = n.v1;
         ViewVertex& v2 = n.v2;
+
+        if (doOnce) {
+            App::Print(10, 420, ("Node Depth: " + std::to_string(n.depth)).c_str());
+            doOnce = false;
+        }
 
         // could do a backface cull check here as well I guess? lol
 
@@ -401,9 +503,20 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         v2.SetColour(m.map_Kd->SampleNearest(v2.GetUV()));
         */
         ///*
-        v0.SetColour(m.map_Kd->SampleBilinear(v0.GetUV()));
-        v1.SetColour(m.map_Kd->SampleBilinear(v1.GetUV()));
-        v2.SetColour(m.map_Kd->SampleBilinear(v2.GetUV()));
+        if (m.map_Kd != NULL) {
+
+            Vec2<float> triMidpointUV = (v0.GetUV() + v1.GetUV() + v2.GetUV()) / 3.f;
+            
+            float shiftAmount = 0.15;
+
+            Vec2<float> uv0Shifted = v0.GetUV() + (triMidpointUV - v0.GetUV()) * shiftAmount;
+            Vec2<float> uv1Shifted = v1.GetUV() + (triMidpointUV - v1.GetUV()) * shiftAmount;;
+            Vec2<float> uv2Shifted = v2.GetUV() + (triMidpointUV - v2.GetUV()) * shiftAmount;;
+
+            v0.SetColour(m.map_Kd->SampleBilinear(uv0Shifted));
+            v1.SetColour(m.map_Kd->SampleBilinear(uv1Shifted));
+            v2.SetColour(m.map_Kd->SampleBilinear(uv2Shifted));
+        }
         //*/
     }
     end = std::chrono::high_resolution_clock::now();
@@ -449,11 +562,18 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
+    App::Print(10, 520, ("Total Vertices: " + std::to_string(finalVertices.size())).c_str(), 0.4f, 0.4f, 1.f);
+
     start = std::chrono::high_resolution_clock::now();
     // ---- Submit to API ---- [DONE]
     for (int i = 0; i < finalVertices.size(); i += 3) {
         SubmitTriangle(finalVertices[i], finalVertices[i + 1], finalVertices[i + 2], wireframe);
     }
+    /*
+    for (int i = 0; i < finalVertices.size(); i += 3) {
+        SubmitTriangle(finalVertices[i], finalVertices[i + 1], finalVertices[i + 2], true);
+    }*/
+
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     int ta = 0;
@@ -505,25 +625,36 @@ void TessellatedPipeline::SubmitTriangle(const ScreenSpaceVertex& v1, const Scre
     auto pos3 = v3.GetScreenPosition();
     auto col3 = v3.GetColour();
     
-    App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth(), 1, pos2.x, pos2.y, v2.GetDepth(), 1, pos3.x, pos3.y, v3.GetDepth(), 1,
-        col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, isWireframe);
+    //if (!isWireframe) {
+        App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth(), 1, pos2.x, pos2.y, v2.GetDepth(), 1, pos3.x, pos3.y, v3.GetDepth(), 1,
+            col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, isWireframe);
+    /* }
+    else {
+        App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth() - 0.1, 1, pos2.x, pos2.y, v2.GetDepth() - 0.1, 1, pos3.x, pos3.y, v3.GetDepth() - 0.1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, isWireframe);
+    }*/
     
     /*App::DrawTriangle(pos1.x, pos1.y, v1.GetDepth(), v1.GetW(), pos2.x, pos2.y, v2.GetDepth(), v2.GetW(), pos3.x, pos3.y, v3.GetDepth(), v3.GetW(),
         col1.x, col1.y, col1.z, col2.x, col2.y, col2.z, col3.x, col3.y, col3.z, isWireframe);*/
     
 }
 
-float TessellatedPipeline::CalculateSSE(Vec3<float> v0, Vec3<float> v2, float distSq) const {
+float TessellatedPipeline::CalculateSSE(Vec3<float> v0, Vec3<float> v2, float distSq) {
     float edgeLenSq = (v2 - v0).GetMagnitudeSquared();
 
-    const float MIN_DIST_SQ = 4.0f;
-    distSq = std::max<float>(distSq, MIN_DIST_SQ);
+    //const float MIN_DIST_SQ = 4.0f;
+    //distSq = std::max<float>(distSq, MIN_DIST_SQ);
+    distSq = std::max<float>(distSq, EPSILON);
 
     static float focalLenSq = -1.0f;
     if (focalLenSq < 0.0f) {
-        float focal = (static_cast<float>(WINDOW_HEIGHT) / 2.f) / m_yScale;
+        float focal = (APP_VIRTUAL_HEIGHT / 2.0f) / m_yScale;
+        //float focal = (static_cast<float>(WINDOW_HEIGHT) / 2.f) / m_yScale;
         focalLenSq = focal * focal;
     }
+
+
+    float sse = (edgeLenSq / distSq) * focalLenSq;
     /*
     if (distSq < EPSILON) {
         distSq = EPSILON;
@@ -533,7 +664,40 @@ float TessellatedPipeline::CalculateSSE(Vec3<float> v0, Vec3<float> v2, float di
     //float focalLenSq = (static_cast<float>(WINDOW_HEIGHT) / 2.f) / m_yScale;
     //focalLenSq *= focalLenSq;
 
+    float approximatePixels = sqrt(sse);
+    float dist = sqrt(distSq);
+    
+
+    /*OutputDebugString("Edge view-space: " + std::to_string(std::sqrt(edgeLenSq)).c_str() + ", Distance: " + ", SSE: " + ", Approx pixels: ");
+        sqrt(edgeLenSq), sqrt(distSq), sse, approximatePixels);
+
+    return sse;*/
+
+    if (doOnce) {
+        App::Print(10, 240, ("Camera Z: " + std::to_string(camera.GetPosition().z) + " | Edge: " + std::to_string(std::sqrtf(edgeLenSq)) + " | Dist: " + std::to_string(dist) + " | SSE: " + std::to_string(sse) + " | Pixels: " + std::to_string(approximatePixels) + " | Split: " + (sse > errorThresholdSq ? "YES" : "NO")).c_str());
+    }
+
+    doOnce = false;
     return (edgeLenSq / distSq) * focalLenSq;
+}
+
+//float TessellatedPipeline::CalculateAngleFactor(const TriangleNode& tri, const Vec3<float>& viewDir) {
+float TessellatedPipeline::CalculateAngleFactor(const TriangleNode& tri, const Vec3<float>& viewDir) {
+    // Calculate triangle normal
+    Vec3<float> edge1 = tri.v1.GetViewPosition() - tri.v0.GetViewPosition();
+    Vec3<float> edge2 = tri.v2.GetViewPosition() - tri.v0.GetViewPosition();
+    Vec3<float> normal = edge1.CrossProduct(edge2).Normalize();
+
+    // Dot product with view direction
+    float cosAngle = std::max<float>(-normal.DotProduct(viewDir), 0.0f);
+    //cosAngle * 3.f;
+    //cosAngle = std::min<float>(cosAngle, 1.f);
+
+    // cosAngle ranges from 0 (edge-on) to 1 (facing camera)
+    // When edge-on (0), we want to reduce tessellation
+    // When facing (1), use full tessellation
+
+    return cosAngle;
 }
 
     /* Input assembler(is this function)

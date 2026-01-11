@@ -10,6 +10,7 @@ namespace TextureLoader {
 	extern std::unordered_map<std::string, Texture> textureMap;
 
 	Texture ProcessTGA(std::string& path);
+	void GenerateTextureTopology(std::string& texturePath);
 	//Texture ProcessTGA_RGBA(std::string& path); // Might need down the line.
 	//Texture ProcessTGA_RGB(std::string& path);
 	//Texture ProcessTGA_BW(std::string& path);

@@ -28,6 +28,7 @@
 #include "Graphics/Pipeline.h"
 #include "Tessellation/TessellatedPipeline.h"
 #include "Loaders/ObjectLoader.h"
+#include "Tessellation/TriangleNode.h"
 
 
 //Pipeline& p = Pipeline::GetInstance();
@@ -68,7 +69,10 @@ Vertex v4 = Vertex(1.f, 1, 0);
 std::vector<Vertex> randV = {};
 std::vector<uint32_t> indices = {};
 
-Quad q = Quad(45, 20, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
+Quad q = Quad(1, 1, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
+//Quad q = Quad(8, 2, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
+std::vector<Mesh> quadMeshes;
+ModelEdge quadEdges;
 Model bunny;
 Model fox;
 //------------------------------------------------------------------------
@@ -80,9 +84,11 @@ Vec2<float> diff;
 
 Vec2<int> windowSize;
 
-std::vector<Vertex> bunnyVerts;
-std::vector<uint32_t> bunnyIndices;
+std::vector<Vertex> foxVerts;
+std::vector<uint32_t> foxIndices;
 ModelAttributes ma;
+
+int frames = 0;
 
 //------------------------------------------------------------------------
 // Called before first update. Do any initial setup here.
@@ -97,6 +103,8 @@ void Init()
 
 	moveForward = true;
 	q.Translate(0, 0, -2);
+	quadMeshes.push_back(q.GetMesh());
+	quadEdges = q.GetAdjacencyTable();
 
 	/*for (int i = 0; i < 1966; ++i) {
 		indices.push_back(i);
@@ -106,9 +114,24 @@ void Init()
 	//bunny = ObjectLoader::Load("./data/Models/Bunny/stanford-bunny.obj");
 	//bunny.Translate(0, 0, -2);
 	fox = ObjectLoader::Load("./data/Models/Fox/low-poly-fox.obj");
-	fox.Translate(0, 15, -55);
+	fox.Translate(0, 15, -25);
 	fox.Rotate(180, 90, 0);
 	fox.Scale(0.25);
+
+	//TriangleNode::MAX_DEPTH = 15;
+
+	std::string t = "./data/Textures/Wall/brickwall.tga";
+	TextureLoader::textureMap["brickwall"] = TextureLoader::ProcessTGA(t);
+	quadMeshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
+
+	/*foxVerts = fox.GetMeshes()[0].geometry->processedMesh;
+	foxIndices.reserve(foxVerts.size());
+	for (unsigned int i = 0; i < foxVerts.size(); ++i) {
+		foxIndices.push_back(i);
+	}
+
+	ma.modelMatrix = fox.GetModelMatrix();
+	ma.material = std::make_shared<Material>(fox.GetMeshes()[0].material);*/
 
 	/*bunnyVerts = bunny.GetMeshes()[0].geometry->processedMesh;
 	bunnyIndices.reserve(bunnyVerts.size());
@@ -117,7 +140,6 @@ void Init()
 	}
 
 	ma.modelMatrix = bunny.GetModelMatrix();*/
-
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
 	testSprite = App::CreateSprite("./data/TestData/Test.bmp", 8, 4);
@@ -138,6 +160,7 @@ void Init()
 //------------------------------------------------------------------------
 void Update(const float deltaTime)
 {
+	frames++;
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
 	testSprite->Update(deltaTime);
@@ -177,10 +200,18 @@ void Update(const float deltaTime)
 	if (App::GetController().CheckButton(App::BTN_DPAD_UP, false))
 	{
 		testSprite->SetScale(testSprite->GetScale() + 0.1f);
+		if (frames > 16) {
+			NodeDepth::MAX_DEPTH = std::min<int>(NodeDepth::MAX_DEPTH + 1, 16);
+			frames = 0;
+		}
 	}
 	if (App::GetController().CheckButton(App::BTN_DPAD_DOWN, false))
 	{
 		testSprite->SetScale(testSprite->GetScale() - 0.1f);
+		if (frames > 16) {
+			NodeDepth::MAX_DEPTH = std::max<int>(NodeDepth::MAX_DEPTH - 1, 0);
+			frames = 0;
+		}
 	}
 	if (App::GetController().CheckButton(App::BTN_DPAD_LEFT, false))
 	{
@@ -209,7 +240,7 @@ void Update(const float deltaTime)
 	//q.Translate(0, 0.002 * deltaTime, (-0.001) * deltaTime);
 	//q.Rotate(0.021 * deltaTime, 0.021 * deltaTime, 0);
 
-	float t = 0.45 / deltaTime;
+	/*float t = 0.45 / deltaTime;
 	t = (moveForward) ? t : (-t);
 
 	if (q.GetTranslation().z < -5) {
@@ -221,7 +252,9 @@ void Update(const float deltaTime)
 	}
 	else if (q.GetTranslation().z < -10 && t < 0) {
 		moveForward = true;
-	}
+	}*/
+
+	// This whole issue is due to the type of pipeline naming, need to share the same camera between pipelines....
 
 	// Mouse rotation
 	/*Need to make all of this compatible with a controller as well! FOr movements and looking and jumping etc, should have a switch statement to handle either scenario*/
@@ -233,7 +266,7 @@ void Update(const float deltaTime)
 	p.camera.RotateXY(degX, degY);
 
 	float camX = 0, camU = 0;
-	float moveSpeed = 0.47;
+	float moveSpeed = 0.007;
 
 	// Translation -> controller and keyboard same
 	if (App::GetController().GetLeftThumbStickX() > 0.5f)
@@ -296,10 +329,18 @@ void Render()
 	//v1.SetColour(0, 0, 0, 255);
 	//p.Render(std::vector<Vertex>({v1, v2, v3, v4}), std::vector<uint32_t>({0, 1, 2, 1, 3, 2}), ModelAttributes());
 	//p.Render(q.GetVertices(), q.GetVertexIds(), q.GetModelAttributes());
-	
+
+
+	/* MAIN PIPELINE */
 	//p.Render(bunnyVerts, bunnyIndices, ma);
-	p.Render(fox.GetMeshes(), fox.GetModelMatrix(), fox.GetAdjacencyTable());
+	//p.Render(foxVerts, foxIndices, ma);
+	/* TESSELLATED PIPELINE */
+	//p.Render(fox.GetMeshes(), fox.GetModelMatrix(), fox.GetAdjacencyTable());
+	p.Render(quadMeshes, q.GetModelMatrix(), quadEdges);
+	// DONE!!!
 	
+
+
 	//App::DrawTriangle(600.0f, 300.0f, -0.5f, 1, 650.0f, 400.0f, -0.5f, 1, 700.0f, 300.0f, -0.5f, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
 	//p.Render(randV, indices, ModelAttributes());
 	//------------------------------------------------------------------------

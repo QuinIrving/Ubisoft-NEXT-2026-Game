@@ -15,7 +15,7 @@ Pipeline& Pipeline::GetInstance() {
 }
 
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
-constexpr bool wireframe = true;
+constexpr bool wireframe = false;
 void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) const {
     // Pretend Camera and Lights [DOING]
     //Mat4<float> cameraView = Mat4<float>::GetIdentity();
@@ -55,7 +55,7 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
         float viewNormal = Vec3<float>::DotProduct(faceNormal, viewDir);
 
         if (viewNormal > 0.f) { // perhaps with an epsilon added if need be.
-            continue;
+            //continue;
         }
 
         // reaching here means it's a front-face:
@@ -72,7 +72,7 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
         const Vec3<float>& v2 = viewVertsAfterCull[i + 2].GetViewPosition();
 
         // REJECT TOP/BOTTOM (Y-AXIS)
-        if (v0.y > -v0.z * hScale && v1.y > -v1.z * hScale && v2.y > -v2.z * hScale) { continue; }
+        /*if (v0.y > -v0.z * hScale && v1.y > -v1.z * hScale && v2.y > -v2.z * hScale) { continue; }
         if (v0.y < v0.z * hScale && v1.y < v1.z * hScale && v2.y < v2.z * hScale) { continue; }
 
         // REJECT LEFT/RIGHT (X-AXIS)
@@ -85,7 +85,7 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
         //App::Print(10, APP_VIRTUAL_HEIGHT - 120 - (i * 10), textBuffer, 0.5f, 1.0f, 0.5f, GLUT_BITMAP_HELVETICA_10);
         if (v0.z > -this->n && v1.z > -this->n && v2.z > -this->n) { continue; }
         //if (v0.z > this->n && v1.z > this->n && v2.z > this->n) { continue; } // we do this instead of  -n to allow for displacement mapping to push vertices back into plane later,
-        if (v0.z < -this->f && v1.z < -this->f && v2.z < -this->f) { continue; }
+        if (v0.z < -this->f && v1.z < -this->f && v2.z < -this->f) { continue; }*/
 
         viewVertsAfterFrustum.insert(viewVertsAfterFrustum.end(), { viewVertsAfterCull[i], viewVertsAfterCull[i + 1], viewVertsAfterCull[i + 2] });
     }
@@ -117,7 +117,26 @@ void Pipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uin
 
 
     // ---- Vertex Shading & Lighting [TODO] ----
+    for (ViewVertex& v : viewVertsAfterFrustum) {
 
+        // could do a backface cull check here as well I guess? lol
+
+        // change this to a smarter solution later when we do our PBR stuff
+        //meshes[v0.GetMaterialIndex()].material;
+            /*
+            v0.SetColour(m.map_Kd->SampleNearest(v0.GetUV()));
+            v1.SetColour(m.map_Kd->SampleNearest(v1.GetUV()));
+            v2.SetColour(m.map_Kd->SampleNearest(v2.GetUV()));
+            */
+        v.SetColour(modelAttributes.material->map_Kd->SampleBilinear(v.GetUV()));
+        int t = 0;
+
+        ///*\
+        
+
+        //v->SetColour(m.map_Kd->SampleBilinear(v0.GetUV()));
+        //*/
+    }
 
     // ---- Apply Projection ----[DONE]
     std::vector<ProjectionVertex> projectionVertices;

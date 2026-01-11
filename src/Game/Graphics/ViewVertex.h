@@ -20,6 +20,7 @@ public:
 	const Vec2<float>& GetUV() const { return m_UV; }
 	const Colour& GetColour() const { return m_colour; }
 	uint32_t GetMeshIndex() const { return m_meshIndex; }
+	//uint32_t GetVertexIdentity() const { return m_vertexIdentity; }
 	uint32_t GetUniqueIndex() const { return m_uniqueIndex; }
 	uint32_t GetMaterialIndex() const { return m_materialIndex; }
 
@@ -47,4 +48,5 @@ private:
 	uint32_t m_meshIndex; // for tessellation
 	uint32_t m_uniqueIndex;
 	uint32_t m_materialIndex;
+	//uint32_t m_vertexIdentity;
 };

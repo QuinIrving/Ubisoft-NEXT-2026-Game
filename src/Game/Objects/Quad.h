@@ -3,6 +3,7 @@
 #include <Graphics/Vertex.h>
 #include <Graphics/ModelAttributes.h>
 #include "QuadMesh.h"
+#include "Model.h"
 
 class Quad {
 public:
@@ -13,7 +14,8 @@ public:
 	void Scale(float x, float y, float z);
 	void Translate(float x, float y, float z);
 
-	const ModelAttributes& GetModelAttributes();
+	//const ModelAttributes& GetModelAttributes();
+	Mat4<float> GetModelMatrix() const;
 	std::vector<uint32_t>& GetVertexIds();
 	std::vector<Vertex>& GetVertices();
 
@@ -21,8 +23,11 @@ public:
 	//Vec3<float> GetRotation() { return m_rotation; }
 	Vec3<float> GetScale() { return m_scale; }
 
-	//Material material;
-	ModelAttributes m_attributes;
+	Material material;
+	//ModelAttributes m_attributes;
+
+	Mesh GetMesh();
+	ModelEdge GetAdjacencyTable();
 
 private:
 	Vec3<float> m_position{ 0., 0., 0. };

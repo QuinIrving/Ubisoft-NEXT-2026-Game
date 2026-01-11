@@ -25,7 +25,6 @@ struct TriangleContext { // Again temp idea for now just so we can easily access
 	std::vector<WorkItem> urgentStack; // for once we need to go down a chain of dependencies of different longest-edge neighbours
 	std::vector<int32_t> freeNodeIndices; // For nodes that were culled, and can re-used by child nodes on split instead of creating cold new nodes.
 
-
 	static bool HaveSameLongestEdge(TriangleNode& node1, TriangleNode& node2);
 	/*std::vector<int32_t> heap;
 

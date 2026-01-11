@@ -9,12 +9,15 @@
 #include "ModelAttributes.h"
 #include "Math/Mat4.h"
 #include "Camera.h"
+#include <AppSettings.h>
 
 /*
     Singleton (thread safe) Pipeline class for rendering.
     Handles vertices per mesh -> vertex shader -> clipping -> tessellation -> texture mapping & lighting -> call rasterization
 */
 class Pipeline {
+public:
+    static constexpr float SCENE_SCALE = 0.1f;
 public:
     static Pipeline& GetInstance();
 
@@ -67,7 +70,7 @@ protected:
     
     Pipeline() = default;
     ~Pipeline() {};
-    
+   
 
     Mat4<float> m_projectionMatrix = CreateProjectionMatrix();
 

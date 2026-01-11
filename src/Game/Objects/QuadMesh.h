@@ -3,7 +3,7 @@
 #include <Graphics/Vertex.h>
 #include <Graphics/ModelAttributes.h>
 
-class QuadMesh /* : public Mesh*/ {
+class QuadMesh : public Mesh {
 public:
 	QuadMesh(float width = 1.f, float height = 1.f, Vec4<float> colour={1.f, 1.f, 1.f, 1.f});
 

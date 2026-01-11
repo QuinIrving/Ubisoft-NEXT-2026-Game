@@ -48,6 +48,9 @@ void TriangleNode::GenericChildSetup(TriangleNode& child, ViewVertex m) {
 	child.depth = depth + 1;
 }*/
 
+namespace NodeDepth {
+	int MAX_DEPTH = 8;
+}
 
 // Can really only be used when we do a single child splitting, with both being pushed to the work queue
 void TriangleNode::SingleSplitLongestEdge(TriangleContext& context, int32_t poolIdx) {
@@ -254,7 +257,7 @@ void TriangleNode::GeneralChildrenSetup(TriangleContext& context, TriangleNode& 
 	leftChild.nodeID = parent.nodeID << 1 | 0;
 	leftChild.baseTriIdx = parent.baseTriIdx;
 	leftChild.depth = parent.depth + 1;
-
+	
 	TriangleNode& rightChild = parent; // parent is our right child.
 	rightChild.v2 = rightChild.v0;
 	rightChild.v0 = rightChild.v1;

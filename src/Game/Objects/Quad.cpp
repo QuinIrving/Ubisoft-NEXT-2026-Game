@@ -1,4 +1,5 @@
 #include "Quad.h"
+#include "Tessellation/TriangleNode.h"
 
 Quad::Quad(float width, float height, float size, Vec4<float> colour) {
 	Scale(size, size, size);
@@ -27,9 +28,8 @@ void Quad::Translate(float x, float y, float z) {
 	m_position.z += z;
 }
 
-const ModelAttributes& Quad::GetModelAttributes() {
-	m_attributes.modelMatrix = Mat4<float>::Scale(m_scale) * m_delta.GetRotationMatrix() * Mat4<float>::Translate(m_position);
-	return m_attributes;
+Mat4<float> Quad::GetModelMatrix() const {
+	return Mat4<float>::Scale(m_scale) * m_delta.GetRotationMatrix() * Mat4<float>::Translate(m_position);
 }
 
 std::vector<uint32_t>& Quad::GetVertexIds() {
@@ -38,4 +38,35 @@ std::vector<uint32_t>& Quad::GetVertexIds() {
 
 std::vector<Vertex>& Quad::GetVertices() {
 	return m_mesh.GetVertices();
+}
+
+Mesh Quad::GetMesh() {
+	Mesh m;
+	m.geometry = std::make_shared<MeshGeometry>(MeshGeometry(m_mesh.GetVertices()));
+	m.material = material;
+	
+	return m;
+}
+
+ModelEdge Quad::GetAdjacencyTable() {
+	ModelEdge me;
+
+	auto key = MakeEdgeKey(0, 1);
+	me.adjacencyTable[key].push_back(0);
+
+
+	key = MakeEdgeKey(1, 2);
+	me.adjacencyTable[key].push_back(0);
+	me.adjacencyTable[key].push_back(1);
+
+	key = MakeEdgeKey(0, 2);
+	me.adjacencyTable[key].push_back(0);
+
+
+	key = MakeEdgeKey(1, 3);
+	me.adjacencyTable[key].push_back(1);
+
+	key = MakeEdgeKey(2, 3);
+	me.adjacencyTable[key].push_back(1);
+	return me;
 }

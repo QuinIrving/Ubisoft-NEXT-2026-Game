@@ -100,6 +100,7 @@ struct ModelAttributes {
 
 	uint32_t uniqueObjectIndex;
 	Mat4<float> modelMatrix;
+	std::shared_ptr<Material> material;
 	//std::vector<Mesh>& meshes = {};
 	//std::shared_ptr<Material> material; // Should setup our textures, and our materials on loadup, then each model can point to one
 	//Material material; // for simplicity at the start I'll do this.

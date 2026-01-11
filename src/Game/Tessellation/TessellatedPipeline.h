@@ -19,6 +19,9 @@
 */
 class TessellatedPipeline {
 public:
+    static constexpr float SCENE_SCALE = 0.2f;
+    bool doOnce;
+public:
     static TessellatedPipeline& GetInstance();
 
     // business logic -> probably some way to bind vertex shader, not sure if needed though.
@@ -30,7 +33,8 @@ public:
     ScreenSpaceVertex HomogenizeAndViewportMap(const ProjectionVertex& v) const;
     void SubmitTriangle(const ScreenSpaceVertex& v1, const ScreenSpaceVertex& v2, const ScreenSpaceVertex& v3, bool isWireframe) const;
     
-    float CalculateSSE(Vec3<float> v0, Vec3<float> v2, float distSq) const;
+    float CalculateSSE(Vec3<float> v0, Vec3<float> v2, float distSq);
+    float CalculateAngleFactor(const TriangleNode& tri, const Vec3<float>& viewDir);
     
     //VertexOut VertexShader(const Vertex& v, const ModelAttributes& MA, const Mat4<float>& V, const Mat4<float>& P);
 
@@ -55,6 +59,7 @@ protected:
     const float m_yScale = tanf(m_fovY / 2);
     float m_aspectRatio;
     const float n{ 0.1 };
+    //const float n{}
     const float f{ 1000 };
 
     std::vector<TriangleNode> tessellateStack;
@@ -75,6 +80,7 @@ protected:
     TessellatedPipeline() = default;
     ~TessellatedPipeline() {};
     
+    //const float SCENE_SCALE = 0.05f;
 
     Mat4<float> m_projectionMatrix = CreateProjectionMatrix();
 
