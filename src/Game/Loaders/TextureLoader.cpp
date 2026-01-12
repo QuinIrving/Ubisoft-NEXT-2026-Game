@@ -1,6 +1,8 @@
 #include "TextureLoader.h"
 #include "Graphics/Colour.h"
 #include <ios>
+#include <algorithm>
+#include <Math/MathConstants.h>
 
 namespace TextureLoader {
 	std::unordered_map<std::string, Texture> textureMap;
@@ -53,6 +55,8 @@ namespace {
 		return Texture();
 	}*/
 
+	
+
 	void ReadRLE(std::ifstream& file, std::vector<uint8_t>& data, int channels) {
 		size_t pixelCount = data.size() / channels;
 		size_t currPixel = 0;
@@ -94,11 +98,726 @@ namespace {
 		}
 	}
 
+	/*
+	void GetSectorVarianceAndAverageColour(Vec2<float> offset, int boxSize, Vec3<float>& avgCol, float& variance) {
+		Vec3<float> colourSum;
+		Vec3<float> squaredColourSum;
+		float sampleCount = 0.0;
+
+		for (int y = 0; y < boxSize; ++y) {
+			for (int x = 0; x < boxSize; ++x) {
+
+			}
+		}
+	}*/
+	/*
+	void GetBoxedSectorVarianceAndAverageColour(Vec2<float> offset, int boxSize, Vec3<float>& avgColour, float& variance) {
+		Vec3<float> colourSum;
+		Vec3<float> squaredColourSum;
+		float sampleCount = 0.0;
+
+		for (int y = 0; y < boxSize; ++y) {
+			for (int x = 0; x < boxSize; ++x) {
+
+			}
+		}
+	}*/
+	// Sobel Kernels
+	const Mat4<float> Gx = Mat4<float>({ Vec4<float>(-1, -2, -1, 0), Vec4<float>(0, 0, 0, 0), Vec4<float>(1, 2, 1, 0), Vec4<float>(0, 0, 0, 1) }); // x-dir kernel
+	const Mat4<float> Gy = Mat4<float>({ Vec4<float>(1, 0, -1, 0), Vec4<float>(2, 0, -2, 0), Vec4<float>(1, 0, -1, 0), Vec4<float>(0, 0, 0, 1) }); // y-dir kernel
+
+	Colour ComputeStructureTensor(Texture& t, Vec2<int> uv) {
+		Vec3<float> tx0y0 = t.texels[(uv.y - 1) * t.width + (uv.x - 1)].GetVectorizedRGB();
+		Vec3<float> tx0y1 = t.texels[(uv.y) * t.width + (uv.x - 1)].GetVectorizedRGB();
+		Vec3<float> tx0y2 = t.texels[(uv.y + 1) * t.width + (uv.x - 1)].GetVectorizedRGB();
+		Vec3<float> tx1y0 = t.texels[(uv.y - 1) * t.width + (uv.x)].GetVectorizedRGB();
+		Vec3<float> tx1y1 = t.texels[(uv.y) * t.width + (uv.x)].GetVectorizedRGB();
+		Vec3<float> tx1y2 = t.texels[(uv.y + 1) * t.width + (uv.x)].GetVectorizedRGB();
+		Vec3<float> tx2y0 = t.texels[(uv.y - 1) * t.width + (uv.x + 1)].GetVectorizedRGB();
+		Vec3<float> tx2y1 = t.texels[(uv.y) * t.width + (uv.x + 1)].GetVectorizedRGB();
+		Vec3<float> tx2y2 = t.texels[(uv.y + 1) * t.width + (uv.x + 1)].GetVectorizedRGB();
+
+		// Jxx is avg of squared x-derivatives, magnitude of gradient on x-axis
+		// Jyy is avg of squared y-derivatives, magnitude of gradient on y-axis
+		// Jxy is avg of product of x and y derivatives, how much the gradients are aligned or orthogonal to each other
+
+		Vec3<float> Sx =	tx0y0 * Gx[0][0] + tx1y0 * Gx[1][0] + tx2y0 * Gx[2][0] +
+							tx0y1 * Gx[0][1] + tx1y1 * Gx[1][1] + tx2y1 * Gx[2][1] +
+							tx0y2 * Gx[0][2] + tx1y2 * Gx[1][2] + tx2y2 * Gx[2][2];
+
+
+		Vec3<float> Sy =	tx0y0 * Gy[0][0] + tx1y0 * Gy[1][0] + tx2y0 * Gy[2][0] +
+							tx0y1 * Gy[0][1] + tx1y1 * Gy[1][1] + tx2y1 * Gy[2][1] +
+							tx0y2 * Gy[0][2] + tx1y2 * Gy[1][2] + tx2y2 * Gy[2][2];
+
+
+		return Vec4<float>(Sx.DotProduct(Sx), Sy.DotProduct(Sy), Sx.DotProduct(Sy), 1.0);
+
+	}
+
+	float ChannelToLinear(float c) {
+		if (c <= 0.04045f) {
+			return c / 12.92f;
+		}
+
+		return powf(((c + 0.055f) / 1.055f), 2.4f);
+	}
+
+	void sRGBToLinear(Vec3<float>& c) {
+		c.x = ChannelToLinear(c.x);
+		c.y = ChannelToLinear(c.y);
+		c.z = ChannelToLinear(c.z);
+	}
+
+	Vec3<float> LinearToXYZ(Vec3<float> c) {
+		Mat4<float> d65 = Mat4<float>({Vec4<float>(0.4124565f, 0.2126729f, 0.0193339f, 0), Vec4<float>(0.3575761f, 0.7151522f, 0.1191920f, 0), Vec4<float>(0.1804375f, 0.0721750f, 0.9503041f, 0), Vec4<float>(0, 0, 0, 1)});
+		return Vec4<float>(c) * d65;
+	}
+
+	float LABf(float t) {
+		return (t > 0.008856f) ? std::cbrtf(t) : (7.787f * t + 16.f / 116.f);
+	}
+
+	Vec3<float> XYZToLAB(Vec3<float> c) {
+		Vec3<float> referenceWhiteD65 = { 0.95047f, 1.0f, 1.08883f };
+		
+		float fx = LABf(c.x / referenceWhiteD65.x);
+		float fy = LABf(c.y / referenceWhiteD65.y);
+		float fz = LABf(c.z / referenceWhiteD65.z);
+
+		float luminance = 116.f * fy - 16.f;
+		float a = (fx - fy) * 500.f;
+		float b = (fy - fz) * 200.f;
+
+		return { luminance, a, b };
+	}
+
+	float LabPivot(float t) {
+		return (t > EPSILON) ? std::cbrtf(t) : (903.3f * t + 16.f) / 116.f;
+	}
+
+	float LabPivotInv(float t) {
+		float t3 = t * t * t;
+		return (t3 > EPSILON) ? t3 : (116.f * t - 16.f) / 903.3f;
+	}
+
+	Vec3<float> LABToXYZ(const Vec3<float>& LAB) {
+		float fy = (LAB.x + 16.0f) / 116.0f;
+		float fx = fy + (LAB.y / 500.0f);
+		float fz = fy - (LAB.z / 200.0f);
+
+		float xr = LabPivotInv(fx);
+		float yr = LabPivotInv(fy);
+		float zr = LabPivotInv(fz);
+
+		Vec3<float> XYZ;
+		XYZ.x = xr * 0.95047f;
+		XYZ.y = yr * 1.f;
+		XYZ.z = zr * 1.08883f;
+
+		return XYZ;
+	}
+
+	Vec3<float> XYZToLinear(const Vec3<float>& XYZ) {
+		Vec3<float> rgb;
+		
+		rgb.x = 3.2404542f * XYZ.x - 1.5371385f * XYZ.y - 0.4985314f * XYZ.z;
+		rgb.y = -0.9692660f * XYZ.x + 1.8760108f * XYZ.y + 0.0415560f * XYZ.z;
+		rgb.z = 0.0556434f * XYZ.x - 0.2040259f * XYZ.y + 1.0572252f * XYZ.z;
+		
+		return rgb;
+	}
+
+	float LinearTosRGB(float c) {
+		return (c <= 0.0031308f) ? 12.92f * c : 1.055f * std::powf(c, 1.f / 2.4f) - 0.055f;
+	}
+
+	Vec3<float> LinearTosRGB(const Vec3<float>& rgb) {
+		return { LinearTosRGB(rgb.x), LinearTosRGB(rgb.y) , LinearTosRGB(rgb.z) };
+	}
+
+	float GetGaussianWeight(float distance, float sigma) {
+		return std::expf(-(distance * distance) / (2.f * sigma * sigma));
+	}
+
+	float GetAnisotropicGaussianWeight(float x, float y, float sigmaX, float sigmaY) {
+		float d2 = (x * x) / (2.f * sigmaX * sigmaX) +
+			(y * y) / (2.f * sigmaY * sigmaY);
+
+		return std::expf(-d2);
+	}
+
+	float GetPolynomialWeight(float x, float y, float eta, float lambda) {
+		float polyVal = (x + eta) - lambda * (y * y);
+		return std::max<float>(polyVal * polyVal, 0.f);
+	}
+
+	float GetAnisotropicPolyWeight(float x, float y, float sigmaX, float sigmaY) {
+		float d2 = (x * x) / (sigmaX * sigmaX) + (y * y) / (sigmaY * sigmaY);
+		float w = 1.f - d2;
+		return (w > 0.f) ? (w * w) : 0.f;
+	}
+
+	Vec4<float> GetAnisotropicSectorAverageColourAndVariance(float angle, int radius, Vec2<float> pixel, Texture& t, Vec4<float>& orientationAndAnisotropy) {
+		Vec4<float> output;
+
+		// Anisotropic Kuwahara Pass
+		Vec2<float> orientation = { orientationAndAnisotropy.x, orientationAndAnisotropy.y };
+
+		float alpha = 1.f;
+		//float alpha = 12.f;
+		float anisotropy = (orientationAndAnisotropy.z - orientationAndAnisotropy.w) / (orientationAndAnisotropy.z + orientationAndAnisotropy.w + EPSILON);
+
+		float scaleX = alpha / (anisotropy + alpha);
+		float scaleY = (anisotropy + alpha) / alpha;
+
+		Mat4<float> matAnisotropy = Mat4<float>({Vec4<float>(scaleX, 0.f, 0.f, 0.f), Vec4<float>(0.f, scaleY, 0.f, 0.f), Vec4<float>(0, 0, 1, 0), Vec4<float>(0, 0, 0, 1)}) * 
+									Mat4<float>({ Vec4<float>(orientation.x, orientation.y, 0, 1), Vec4<float>(-orientation.y, orientation.x, 0, 0), Vec4<float>(0, 0, 1, 0), Vec4<float>(0, 0, 0, 1)});
+
+		Vec3<float> colourSum;
+		Vec3<float> colourSumSquared;
+		float sampleCount = 0.f;
+
+		float totalWeight = 0.f;
+
+		anisotropy = std::clamp(anisotropy, 0.f, 0.99f);
+		float sigma = radius / 3.f;
+		//float sigmaX = radius / 3.f;
+		//float sigmaY = sigmaX * (1.f - anisotropy);
+
+		// polynomial way instead of gaussian:
+		float eta = 0.1f;
+		float lambda = 0.5f;
+
+		for (int r = 1; r <= radius; r += 1) {
+			for (float a = -(PI / 8.f); a <= PI / 8.f; a += (PI / 16.f)) {
+				Vec2<float> pixelOffset = Vec2<float>(std::cosf(angle + a), std::sinf(angle + a)) * float(r);
+				Vec4<float> po = Vec4<float>(pixelOffset.x, pixelOffset.y, 0, 1) * matAnisotropy;
+				//Vec2<float> rotatedOffset = Vec2<float>(pixelOffset.x * orientation.x + pixelOffset.y * orientation.y, -pixelOffset.x * orientation.y + pixelOffset.y * orientation.x);
+				pixelOffset.x = po.x;
+				pixelOffset.y = po.y;
+
+				int h = std::clamp<int>(int(std::roundf(pixel.y + pixelOffset.y)), 0, t.height - 1);
+				int w = std::clamp<int>(int(std::roundf(pixel.x + pixelOffset.x)), 0, t.width - 1);
+
+				Colour c = t.texels[h * t.width + w];
+				Vec3<float> rgb = c.GetVectorizedRGB();
+
+				// Since we are reading diffuse/albedo textures, typically will be in sRGB space, so will use the proper conversion:
+				//sRGBToLinear(rgb);
+
+				// 2D Gaussian function:
+				// f(x, y) = e^(-(x^2 + y^2) / (2 * stand.Deviation^2))
+				//rotatedOffset.x /= scaleX;
+				//rotatedOffset.y /= scaleY;
+				//float weight = std::exp(-(rotatedOffset.x * rotatedOffset.x + rotatedOffset.y * rotatedOffset.y) / (2.f * sigma * sigma));
+				//float weight = GetAnisotropicGaussianWeight(pixelOffset.x, pixelOffset.y, sigmaX, sigmaY);
+				float weight = GetGaussianWeight(pixelOffset.GetMagnitude(), sigma);
+
+				// Polynomial way (faster):
+				//float weight = GetAnisotropicPolynomialWeight(pixelOffset.x, pixelOffset.y, eta, lambda);
+
+				colourSum += rgb * weight;
+				colourSumSquared += rgb * rgb * weight;
+				totalWeight += weight;
+			}
+		}
+
+		// Calculate avg colour and variance
+		Vec3<float> colourAvg = colourSum / totalWeight;
+		Vec3<float> variance = (colourSumSquared / totalWeight) - (colourAvg * colourAvg);
+		float luminanceVariance = variance.DotProduct(Vec3<float>(0.299f, 0.587f, 0.114f));// Uses NTSC formula to calculate luminance from RGB
+
+		output.x = colourAvg.x;
+		output.y = colourAvg.y;
+		output.z = colourAvg.z;
+		output.w = luminanceVariance;
+
+		// Post-process if we want.
+
+		return output;
+	}
+
+	Vec4<float> GetBoxedSectorAverageColourAndVariance(Vec2<int> sectorTL, int boxSize, Texture& t) {
+		// The x,y,z components inform of the average colour, and the w (or 4th) component contains the variance for the pixel.
+		Vec4<float> output;
+
+		Vec3<float> colourSum;
+		Vec3<float> colourSumSquared;
+		float sampleCount = 0.f;
+
+		for (int y = sectorTL.y; y < sectorTL.y + boxSize; ++y) {
+			int h = std::clamp<int>(y, 0, t.height - 1);
+
+			for (int x = sectorTL.x; x < sectorTL.x + boxSize; ++x) {
+				int w = std::clamp<int>(x, 0, t.width - 1);
+
+				Colour c = t.texels[h * t.width + w];
+				Vec3<float> rgb = c.GetVectorizedRGB();
+
+				// Since we are reading diffuse/albedo textures, typically will be in sRGB space, so will use the proper conversion:
+				//sRGBToLinear(rgb);
+
+				colourSum += rgb;
+				colourSumSquared += rgb * rgb;
+				sampleCount += 1.f;
+			}
+		}
+
+		// Calculate avg colour and variance
+		Vec3<float> colourAvg = colourSum / sampleCount;
+		Vec3<float> variance = (colourSumSquared / sampleCount) - (colourAvg * colourAvg);
+		float luminanceVariance = variance.DotProduct(Vec3<float>(0.299f, 0.587f, 0.114f));// Uses NTSC formula to calculate luminance from RGB
+
+		output.x = colourAvg.x;
+		output.y = colourAvg.y;
+		output.z = colourAvg.z;
+		output.w = luminanceVariance;
+
+		return output;
+	}
+
+	// Circular with also a gaussian weight (or polynomial estimated) per pixel colour contribution
+	Vec4<float> GetPapariSectorAverageColourAndVariance(float angle, int radius, Vec2<float> pixel, Texture& t) {
+		Vec4<float> output;
+
+		Vec3<float> colourSum;
+		Vec3<float> colourSumSquared;
+		float sampleCount = 0.f;
+
+		float totalWeight = 0.f;
+		float sigma = radius / 3.f;
+		// polynomial way instead of gaussian:
+		float eta = 0.1f;
+		float lambda = 0.5f;
+
+		for (int r = 1; r <= radius; r += 1) {
+			for (float a = -(PI / 8.f); a <= PI / 8.f; a += (PI / 16.f)) {
+				Vec2<float> pixelOffset = Vec2<float>(std::cosf(angle + a), std::sinf(angle + a)) * float(r);
+
+				int h = std::clamp<int>(int(std::roundf(pixel.y + pixelOffset.y)), 0, t.height - 1);
+				int w = std::clamp<int>(int(std::roundf(pixel.x + pixelOffset.x)), 0, t.width - 1);
+
+				Colour c = t.texels[h * t.width + w];
+				Vec3<float> rgb = c.GetVectorizedRGB();
+
+				// Since we are reading diffuse/albedo textures, typically will be in sRGB space, so will use the proper conversion:
+				//sRGBToLinear(rgb);
+
+				// 2D Gaussian function:
+				// f(x, y) = e^(-(x^2 + y^2) / (2 * stand.Deviation^2))
+				//float weight = GetGaussianWeight(pixelOffset.GetMagnitude(), sigma);
+
+				// Polynomial way (faster):
+				float weight = GetPolynomialWeight(pixelOffset.x, pixelOffset.y, eta, lambda);
+
+				/*colourSum += rgb;
+				colourSumSquared += rgb * rgb;
+				sampleCount += 1.f;*/
+
+				colourSum += rgb * weight;
+				colourSumSquared += rgb * rgb * weight;
+				totalWeight += weight;
+			}
+		}
+
+		// Calculate avg colour and variance
+		//Vec3<float> colourAvg = colourSum / sampleCount;
+		//Vec3<float> variance = (colourSumSquared / sampleCount) - (colourAvg * colourAvg);
+		//float luminanceVariance = variance.DotProduct(Vec3<float>(0.299f, 0.587f, 0.114f));// Uses NTSC formula to calculate luminance from RGB
+
+		Vec3<float> colourAvg = colourSum / totalWeight;
+		Vec3<float> variance = (colourSumSquared / totalWeight) - (colourAvg * colourAvg);
+		float luminanceVariance = variance.DotProduct(Vec3<float>(0.299f, 0.587f, 0.114f));// Uses NTSC formula to calculate luminance from RGB
+
+		output.x = colourAvg.x;
+		output.y = colourAvg.y;
+		output.z = colourAvg.z;
+		output.w = luminanceVariance;
+
+		return output;
+	}
+
+	Vec4<float> GetDominantOrientation(Vec3<float>& structureTensor) {
+		float Jxx = structureTensor.x;
+		float Jyy = structureTensor.y;
+		float Jxy = structureTensor.z;
+
+		float trace = Jxx + Jyy;
+		float determinant = Jxx * Jyy - Jxy * Jxy;
+
+
+		float lambda1 = trace * 0.5f + std::sqrtf(trace * trace * 0.25f - determinant);
+		float lambda2 = trace * 0.5f - std::sqrtf(trace * trace * 0.25f - determinant);
+
+		float jxyStrength = std::abs(Jxy) / (std::abs(Jxx) + std::abs(Jyy) + std::abs(Jxy) + EPSILON);
+		Vec2<float> v;
+		if (jxyStrength > 0.f) {
+			v = Vec2<float>(-Jxy, Jxx - lambda1).GetNormalized();
+		}
+		else {
+			v = Vec2<float>(0.f, 1.f);
+		}
+
+		return Vec4<float>(v.x, v.y, lambda1, lambda2);
+	}
+
+	Texture ApplyKuwaharaFilter(Texture& t) {
+		/*
+		Regular Kuwahara Filter:
+		FOR EACH PIXEL
+		- Center a box around a pixel,
+		- divide the box into 4 "sub-boxes" called sectors
+		- Calculate the average colour and variance for each sector
+		- Set our pixel to the average colour of the sector with the lowest variance
+		variance is the stand deviation squared = the sum of [(the difference betwwen a colour and the mean colour)squared] for all colours in the sector divided by the number of colours in the sector
+		=> when a pixel sits outside an edge, the sector with lowest variance will always be outside that edge
+		=> when a pixel sits inside an edge, the sector with the lowest variance will be inside the edge.
+
+		size of the sector = kernel size.
+
+		!!!! Look into the sector edge cases (such as a pixel at the corner of an image) !!!!
+		====== Papari extension ======
+		- Remove square shaped kernel to a circular one
+		- Improve weight influence each pixel has on the filter
+		8 sectors is the ideal amount to balance output quality and good performance.
+
+		--- Better weighting of colours ---
+		Gausian weights fix the issue, provides a gradual fall-off from center of sector to its edges
+		emphasizes central pixels, seems to also be radius of 2 pixels
+		2D Gaussian function: f(x,y) = e^(-(x^2 + y^2) / (2 * (stand. dev ^ 2))
+		compute weight via gaus formula, take the resulting weight into account when calcing weighted colour sum and weighted squared colour sum,
+		the weights are then reflected in final result of variance and average colour for each sector.
+
+		--- Fixing performance ---
+		Gaussian function is expensive, so we should use the Anisotropic Kuwahara Filtering with Polynomial Weighting functions:
+		[(x + zeta) - n(eta)y^2]^2
+
+		====== Anisotropic Kuwahara filter ======
+		anisotropic = one dominant direction of change.
+		can adapt our circular kernel to local features of input during sampling by squeezing & rotating it. SO our sectors are an ellipsis rather than circle
+
+		Multi-pass:
+		=> First pass
+		- Take underlying scene as input and return the structure of the scene
+		- Based on the structure as input, we'll apply our kuwahara filter to the underlying scene
+		=> second pass
+		- Apply some tone mapping and other details to help it
+
+		A.k.a
+		Apply Sobel operator to scene to get the "structure tensor"
+		Apply anisotropic kuwahara filter on original scene with tensor structure on (we need to have both the original image input and the structure tensor)
+		Apply final pass for tone mapping, quantization, saturation etc
+
+		Apply sobel matrix for every pixel, but instead of rapid change in intensity, extract the partial derivatives along the x/y axis representing the rate of change.
+		those partial derivatives allow us to obtain a structure tensor
+		Which is a math tool in image processing to describe the local structure and orientation of an image.
+		J = [[Jxx, Jxy], [Jxy, Jyy]]
+		Sx = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]
+		Sy = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]
+		Jxx = dot(Sx, Sx), Jyy = dot(Sy, Sy) & Jxy = dot(Sx, Sy)
+
+		Jxx: average of the squared x-derivatives, representing magnitude of gradient on x-axis
+		Jyy: average of squared y-derivatives, representing magnitude of gradient on y-axis
+		Jxy: average of product of x & y derivatives, representing how much the gradients are aligned/orthogonal to each other
+
+		Edglines have possible colours:
+		- Red: strong vertical rate of change
+		- Green: Strong Horizontal rate of change
+		- Yellow: rate of change in both x and y axis.
+
+		We want to know direction a pixel points (dominant direction, and orientation of tensort at a given position)
+		Which eigenvalues and eigenvectors can provide.
+
+		EigenVectors: represent directions where a transformation or a matrix results in those vectors stretching or shrinking without changing directions.
+		there is a non-zero vector v satisfying:
+		- A * v = lambda * v where A is a transformation matrix and lambda is the eigenvalue for that vector
+
+		Eigenvalues represent the intensity of the streching/shrinking of the transformation
+		In our case:
+		- There are 2 eigenvalues for our Structure Tensor Lambda 1 and Lambda 2.
+		- They represent strength of gradient in the direction of the strongest intensity change, usually indicating an edge, and the strength of the gradient in the
+			direction orthogonal to the strongest intensity of change respectively
+		- Each eigenvector is associated with an eigenvalue representing the strongest and weakest rate of change
+
+		Mat: [[a, b], [b,c]]
+		- It's trace is a + d
+		- It determinant is a * d - b^2
+
+		Through our structure tensor, we'd like to obtain lamda 1, and derive its corresponding eigenvector, giving us dominant direction of the local struicture to adapt our filter.
+		Can do so via starting from the definition of eigen vector: A * v = lambda * v
+		Given matrix: [[a, b], [b, c]] we have:
+		(A - lambda * I) * v = 0 (I is identity matrix)
+		Since v is non-null, only way for the product of matrix transform and non-zero vector to be null is if transformation completely squishes space,
+		which can be represented by a zero determinant for that matrix transform, hence det(A - lambda * I) = 0
+		- det([[a - lambda, b], [b, d - lambda]]) = 0
+		- By applying formula of determinant we get:
+			(a - lambda) * (d - lambda) - b^2 = 0
+		Simplify: Lamda^2 - (a + d)lambda + (ad - b^2) = 0
+		^ Quadratic equation to solve for lambda.
+
+		SOlution of the quadratic equation gives us 2 possible values for lambda:
+		Lambda = [(a + d) +- sqrt((a + d)^2 - 4 * (ad - b^2))] / 2
+		Simplify with determinant and trace of transformation matrix:
+		Lambda = [trace +- sqrt(trace^2 - 4 * determinant)] / 2
+		^ Use this formula to compute both eigenvalues
+
+		Now we pick the largest eigenvalue out of the two to derive our eigenvector
+		- (A - lambda * I) * v = 0
+		- [Jxx - lambda, Jxy] [vx] = [0] and [Jxy, Jyy - lambda] * [vy] [0]
+		- (Jxx - lambda) * vx + Jxy * vy = 0 AND Jxy *vx + (Jyy - lambda) * vy = 0
+		- vx = -Jxy * vy / (Jxx - lambda), by setting vy to 1 we get:
+			- vx = -Jxy / (Jxx - lambda)
+		- Multiply both components by Jxx - lambda, and obtain the final value for our eigen vector:
+			- v = (-Jxy, Jxx - lambda)
+		^ Apprently resort to using this eigenvector only if Jxy relative to the other components of the tensor matrix was above zero.
+
+		Anisotropy A using those eigenvalue as:
+		A = (lambda1 - lambda2) / (lambda1 + lambda2 + 1e-7)
+		(1e-7 to denominator to avoid potential 0 values)
+
+		- A ranges from 0 to 1
+		- When lambda1 = lambda2, the anisotropy is 0, representing an isotropic region
+		- When lambda1 > lambda2, the anisotropy tends towards 1, representing an anisotropic region.
+			- Parameter "alpha" represents intensity of the anisotropy of filter. Suggests default of alpha = 1.0, however, it can make the filter very noisy at high kernel size, but
+			they found that any value above 10 yielded something satisfying by 25 was a good looking output
+
+		- As anisotropy reaches 1, the ellipsis becomes more elongated along the axis, stretching our circular kernel
+		- When we have a relatively isotropic region, the scale factors are 1 resulting in our kernel remaining circular.
+		We now stretch and scale our kernel based on the anisotropy, remaining task is to orient it accordingly uising eigenvector computed previously and defining a rotation matrix from it.
+
+		Last step simply consists of applying the matrix to our sampleOffset, and now the Kuwahara filter is anisotropic.
+		---
+		=== Final touches ===
+		Can add final post-processing to our scene:
+		- quantization (I'm doing)
+		- colour interpolation
+		- saturation
+		- tone mapping
+		- adding some texture to output
+
+		Quantization:
+		floor(colour * (n - 1) + 0.5) / n - 1, where n is the total num of colours
+		Quantization by:
+		- calculating the LAB value of the curr pixel, setting the number of colours N (for me 16, may do 64 or 8 idk, or maybe different depending on the use-case (topology vs scene)
+		- use formula established above
+		- clamp the range to avoid extreme values which wouldn't yield a realistic painting effect
+
+		Can also add two-point interpolation to blend our colours with our quantized image
+		- for a darker quantized pixel, we'd opt to interpolated from black to image colour based on quantization value
+		- FOr a lighted quantized pixel, interpoalted from image to white
+		Emphasizes contrast b/en light and dark areas. (This looked really cool in the images I saw)
+
+		Then added some nice ACES tone mapping (I believe I will be doing this anyway on my HDR stuff.
+		Can also add some paper-like texture and blend it with colour output (PBR type idea with my stuff lol)
+
+		*/
+		
+		std::vector<Colour> kuwaharaPixels;
+
+		/*for (const Colour& c : t.texels) {
+
+		}*/
+
+		const int KERNEL_SIZE = 7;//5;
+		//const int SECTOR_COUNT = 4;
+
+		//std::vector<Vec3<float>> boxAvgCols;
+		//std::vector<float> boxVariances;
+
+		//boxAvgCols.reserve(SECTOR_COUNT);
+		//boxVariances.reserve(SECTOR_COUNT);
+
+		// Each time we make it so we set an offset from the current pixel as the top left of the sector, as long as it knows the box size, it should be correct.
+		Vec2<float> sectorTopLeft;
+
+		// we can make it pass back a Vec4<float> with it being first 3 the average colour, and the final float the variance
+		/*for (int y = 0; y < t.height; ++y) {
+			for (int x = 0; x < t.width; ++x) {
+				// reset our per-pixel sector containers
+				boxAvgCols.clear();
+				boxVariances.clear();
+
+				Vec4<float> sectorOutput;
+				// For each pixel, we calculate the sector variance and colour.
+				sectorOutput = GetBoxedSectorAverageColourAndVariance(Vec2<int>(x - KERNEL_SIZE + 1, y - KERNEL_SIZE + 1), KERNEL_SIZE, t); // Top Left Box
+				boxAvgCols.push_back(sectorOutput);
+				boxVariances.push_back(sectorOutput.w);
+
+				sectorOutput = GetBoxedSectorAverageColourAndVariance(Vec2<int>(x, y - KERNEL_SIZE + 1), KERNEL_SIZE, t); // Top Right Box
+				boxAvgCols.push_back(sectorOutput);
+				boxVariances.push_back(sectorOutput.w);
+
+				sectorOutput = GetBoxedSectorAverageColourAndVariance(Vec2<int>(x - KERNEL_SIZE + 1, y), KERNEL_SIZE, t); // Bottom Left Box
+				boxAvgCols.push_back(sectorOutput);
+				boxVariances.push_back(sectorOutput.w);
+
+				sectorOutput = GetBoxedSectorAverageColourAndVariance(Vec2<int>(x, y), KERNEL_SIZE, t); // Bottom Right Box
+				boxAvgCols.push_back(sectorOutput);
+				boxVariances.push_back(sectorOutput.w);
+
+				float minVariance = boxVariances[0];
+				Vec3<float> finalColour = boxAvgCols[0];
+
+				for (int i = 1; i < SECTOR_COUNT; ++i) {
+					if (boxVariances[i] < minVariance) {
+						finalColour = boxAvgCols[i];
+						minVariance = boxVariances[i];
+					}
+				}
+
+				kuwaharaPixels.push_back(Colour(finalColour.x, finalColour.y, finalColour.z, 1.f));
+			}
+		}*/
+
+		/*const int SECTOR_COUNT = 8;
+
+		std::vector<Vec3<float>> avgCols;
+		std::vector<float> variances;
+
+		avgCols.reserve(SECTOR_COUNT);
+		variances.reserve(SECTOR_COUNT);
+
+		for (int y = 0; y < t.height; ++y) {
+			for (int x = 0; x < t.width; ++x) {
+				// reset our per-pixel sector containers
+				avgCols.clear();
+				variances.clear();
+
+				Vec4<float> sectorOutput;
+
+				for (int i = 0; i < SECTOR_COUNT; ++i) {
+					float angle = (float(i) * (2 * PI)) / float(SECTOR_COUNT);
+
+					// For each pixel, we calculate the sector variance and colour.
+					sectorOutput = GetPapariSectorAverageColourAndVariance(angle, KERNEL_SIZE, Vec2<float>(x, y), t); // Top Left Box
+					avgCols.push_back(sectorOutput);
+					variances.push_back(sectorOutput.w);
+				}
+				
+				float minVariance = variances[0];
+				Vec3<float> finalColour = avgCols[0];
+
+				for (int i = 1; i < SECTOR_COUNT; ++i) {
+					if (variances[i] < minVariance) {
+						finalColour = avgCols[i];
+						minVariance = variances[i];
+					}
+				}
+
+				kuwaharaPixels.push_back(Colour(finalColour.x, finalColour.y, finalColour.z, 1.f));
+
+				/*
+				sectorOutput = GetBoxedSectorAverageColourAndVariance(Vec2<int>(x, y - KERNEL_SIZE + 1), KERNEL_SIZE, t); // Top Right Box
+				boxAvgCols.push_back(sectorOutput);
+				boxVariances.push_back(sectorOutput.w);
+
+				sectorOutput = GetBoxedSectorAverageColourAndVariance(Vec2<int>(x - KERNEL_SIZE + 1, y), KERNEL_SIZE, t); // Bottom Left Box
+				boxAvgCols.push_back(sectorOutput);
+				boxVariances.push_back(sectorOutput.w);
+
+				sectorOutput = GetBoxedSectorAverageColourAndVariance(Vec2<int>(x, y), KERNEL_SIZE, t); // Bottom Right Box
+				boxAvgCols.push_back(sectorOutput);
+				boxVariances.push_back(sectorOutput.w); 
+				* /
+			}
+		}*/
+
+
+		// Anisotropic method requires multiple passes.
+		const int SECTOR_COUNT = 8;
+		std::vector<Colour> sobelColours;
+		sobelColours.reserve(t.height* t.width);
+
+		// Let's add rgb of 0 for the first 
+
+		for (int y = 0; y < t.height; ++y) {
+			for (int x = 0; x < t.width; ++x) {
+				if (y == 0 || y == t.height - 1 || x == 0 || x == t.width - 1) {
+					sobelColours.push_back(Colour(0.f, 0.f, 0.f, 1.f));
+					continue;
+				}
+
+				sobelColours.push_back(ComputeStructureTensor(t, Vec2<int>(x, y)));
+			}
+		}
+
+		// Lets say we have some form of 2d matrix for change of basis,
+		// We then do (00 - lambda)(11 - lambda) - [0][1] * [1][0] quadratic polynomial in lambda, and can only be a eigenvalue if the result of that is 0,
+		// then to get the eigen vector, plug in the eigenvalue as lambda into the matrix, and solve for x,y to get an eigen vector, although technically could have no eigenvectors
+		// only when determinant is imaginary numbers
+
+		// FOr 2x2 matrix [a, b]
+		//				  [b, c]
+		// Trace = a + c, det = ac - b^2. (Generic formula is technically: trace = a + d, and determinant = a*x - b^2.
+		// we can get the eigenvalues by solving for 0 on the polynomial general case:
+		// (a - lambda) * (d-lambda) - b^2
+		// We can solves this generally via the quadratic equation:
+		// [trace +- sqrt(trace^2 - 4*determinant)] / 2
+		std::vector<Vec4<float>> pixelOrientations;
+		pixelOrientations.reserve(sobelColours.size());
+
+		for (Colour& c : sobelColours) {
+			pixelOrientations.push_back(GetDominantOrientation(c.GetVectorizedRGB()));
+		}
+
+		std::vector<Vec3<float>> avgCols;
+		std::vector<float> variances;
+
+		avgCols.reserve(SECTOR_COUNT);
+		variances.reserve(SECTOR_COUNT);
+
+		for (int y = 0; y < t.height; ++y) {
+			for (int x = 0; x < t.width; ++x) {
+				// reset our per-pixel sector containers
+				avgCols.clear();
+				variances.clear();
+
+				Vec4<float> sectorOutput;
+
+				for (int i = 0; i < SECTOR_COUNT; ++i) {
+					float angle = (float(i) * (2 * PI)) / float(SECTOR_COUNT);
+
+					// For each pixel, we calculate the sector variance and colour.
+					sectorOutput = GetAnisotropicSectorAverageColourAndVariance(angle, KERNEL_SIZE, Vec2<float>(x, y), t, pixelOrientations[y * t.width + x]);
+					avgCols.push_back(sectorOutput);
+					variances.push_back(sectorOutput.w);
+				}
+
+				float minVariance = variances[0];
+				Vec3<float> finalColour = avgCols[0];
+
+				for (int i = 1; i < SECTOR_COUNT; ++i) {
+					if (variances[i] < minVariance) {
+						finalColour = avgCols[i];
+						minVariance = variances[i];
+					}
+				}
+
+				kuwaharaPixels.push_back(Colour(finalColour.x, finalColour.y, finalColour.z, 1.f));
+			}
+		}
+
+		Texture kuwaharaT;
+		kuwaharaT.height = t.height;
+		kuwaharaT.width = t.width;
+		kuwaharaT.channelType = t.channelType;
+
+		kuwaharaT.texels = kuwaharaPixels;
+		//kuwaharaT.texels = sobelColours;
+
+		return kuwaharaT;
+	}
+
 }
 
 // May be able to support RGB, RGBA, and BW from here by reading the header, or send it out to helpers for each
 Texture TextureLoader::ProcessTGA(std::string& path) {
 	std::ifstream file{ path, std::ios::binary };
+
+	if (!file.is_open()) {
+		throw std::runtime_error("Failed to open TGA file: " + path);
+	}
 
 	TGAHeader header;
 	file.read(reinterpret_cast<char*>(&header), sizeof(TGAHeader));
@@ -181,21 +900,203 @@ Texture TextureLoader::ProcessTGA(std::string& path) {
 	return t;
 }
 
-void TextureLoader::GenerateTextureTopology(std::string& texturePath) {
+float LabDistanceSq(const Vec3<float>& a, const Vec3<float>& b) {
+	Vec3<float> d = a - b;
+	return d.GetMagnitudeSquared();
+}
+
+struct LABPixel {
+	float L;
+	float a;
+	float b;
+};
+
+struct LABBox {
+	std::vector<int> indices; // indices of labPixels;
+	Vec3<float> min;
+	Vec3<float> max;
+};
+
+void ComputeBounds(LABBox& box, const std::vector<LABPixel>& pixels) {
+	box.min = { FLT_MIN, FLT_MAX, FLT_MAX };
+	box.max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+
+	for (int i : box.indices) {
+		const auto& p = pixels[i];
+		box.min.x = std::min<float>(box.min.x, p.L);
+		box.min.y = std::min<float>(box.min.y, p.a);
+		box.min.z = std::min<float>(box.min.z, p.b);
+
+		box.max.x = std::max<float>(box.max.x, p.L);
+		box.max.y = std::max<float>(box.max.y, p.a);
+		box.max.z = std::max<float>(box.max.z, p.b);
+	}
+}
+
+void SplitBox(LABBox& box, LABBox& outA, LABBox& outB, const std::vector<LABPixel>& pixels) {
+	Vec3<float> range = box.max - box.min;
+
+	int axis = 0;
+	float maxRange = range.x;
+
+	if (range.y > maxRange) {	
+		axis = 1; 
+		maxRange = range.y;
+	}
+	if (range.z > maxRange) { 
+		axis = 2; 
+	}
+
+	auto& idx = box.indices;
+
+	std::nth_element(
+		idx.begin(),
+		idx.begin() + idx.size() / 2,
+		idx.end(),
+		[&](int i1, int i2) {
+			const LABPixel& p1 = pixels[i1];
+			const LABPixel& p2 = pixels[i2];
+			return (axis == 0 ? p1.L : axis == 1 ? p1.a : p1.b) <
+				(axis == 0 ? p2.L : axis == 1 ? p2.a : p2.b);
+		}
+	);
+
+	size_t mid = idx.size() / 2;
+
+	outA.indices.assign(idx.begin(), idx.begin() + mid);
+	outB.indices.assign(idx.begin() + mid, idx.end());
+
+	ComputeBounds(outA, pixels);
+	ComputeBounds(outB, pixels);
+}
+
+std::vector<Vec3<float>> BuildLABPalette(
+	const std::vector<LABPixel>& pixels,
+	int numColours)
+{
+	std::vector<LABBox> boxes;
+
+	LABBox root;
+	root.indices.resize(pixels.size());
+	for (int i = 0; i < pixels.size(); ++i) {
+		root.indices.push_back(i);
+	}
+
+	ComputeBounds(root, pixels);
+
+	boxes.push_back(root);
+
+	while ((int)boxes.size() < numColours)
+	{
+		// Find box with largest volume
+		int splitIndex = 0;
+		float bestExtent = 0.f;
+
+		for (int i = 0; i < (int)boxes.size(); ++i) {
+			Vec3<float> e = boxes[i].max - boxes[i].min;
+			float extent = std::max<float>({ e.x, e.y, e.z });
+			if (extent > bestExtent && boxes[i].indices.size() > 1) {
+				bestExtent = extent;
+				splitIndex = i;
+			}
+		}
+
+		LABBox a, b;
+		SplitBox(boxes[splitIndex], a, b, pixels);
+
+		boxes[splitIndex] = a;
+		boxes.push_back(b);
+	}
+
+	// Compute mean LAB per box
+	std::vector<Vec3<float>> palette;
+	palette.reserve(boxes.size());
+
+	for (auto& box : boxes) {
+		Vec3<float> sum = { 0, 0, 0 };
+		for (int i : box.indices) {
+			sum.x += pixels[i].L;
+			sum.y += pixels[i].a;
+			sum.z += pixels[i].b;
+		}
+		palette.push_back(sum / float(box.indices.size()));
+	}
+
+	return palette;
+}
+
+int FindNearestLAB(const Vec3<float>& lab, const std::vector<Vec3<float>>& palette)
+{
+	int best = 0;
+	float bestDist = FLT_MAX;
+
+	for (int i = 0; i < (int)palette.size(); ++i) {
+		Vec3<float> d = lab - palette[i];
+		float dist = d.DotProduct(d);
+		if (dist < bestDist) {
+			bestDist = dist;
+			best = i;
+		}
+	}
+	return best;
+}
+
+Texture LABQuantizeImage(Texture& t, int numColours) {
+	// May also want to pass in some form of fixed LAB, and the number of possible colours to quantize into
+	Texture quantizedT;
+	quantizedT.height = t.height;
+	quantizedT.width = t.width;
+	quantizedT.channelType = t.channelType;
+
+	std::vector<LABPixel> labPixels;
+	labPixels.reserve(t.width * t.height);
+
+	for (int h = 0; h < t.height; ++h) {
+		for (int w = 0; w < t.width; ++w) {
+			// Convert sRGB -> rgb if we need 
+			Vec3<float> rgb = t.texels[h * t.width + w].GetVectorizedRGB();
+			//sRGBToLinear(rgb);
+			Vec3<float> XYZ = LinearToXYZ(rgb);
+			Vec3<float> LAB = XYZToLAB(XYZ);
+			labPixels.push_back({LAB.x, LAB.y, LAB.z});
+		}
+	}
+
+	auto palette = BuildLABPalette(labPixels, numColours);
+
+	std::vector<Colour> quantizedPixels;
+	quantizedPixels.reserve(labPixels.size());
+
+	for (size_t i = 0; i < labPixels.size(); ++i) {
+		Vec3<float> lab = { labPixels[i].L, labPixels[i].a, labPixels[i].b };
+		int idx = FindNearestLAB(lab, palette);
+
+		Vec3<float> rgb = XYZToLinear(LABToXYZ(palette[idx]));//LinearTosRGB(XYZToLinear(LABToXYZ(palette[idx])));
+
+		quantizedPixels.push_back(Colour(rgb.x, rgb.y, rgb.z, 1.f));
+	}
+
+	quantizedT.texels = quantizedPixels;
+	
+	return quantizedT;
+}
+
+
+Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 	// First read in the general TGA texture to get the pixel data
 	Texture t = ProcessTGA(texturePath);
+	// set some value for the texture
 
 	// Now apply the Anisotropic Kuwahara Filter on the texture to try to denoise it (and keep edge lines which are important)
 	// Anisotropic Kuwahara filter (with polynomial weights) [TODO]
-	/*
+	Texture kuwaharaT = ApplyKuwaharaFilter(t);
 	
-	
-	*/
-
-
 
 	//  Do LAB conversion, Quantize it with our set of colours (16) [WE SHOULD HAVE A DIRECT INITIALIZED COLOUR LIST PALETTE FOR OURSELVES), and tile the pixels for SIMD
-
+	Texture quantizedT = LABQuantizeImage(kuwaharaT, 32);
+		// potentially do sRGB correction if it's non-linear.
+		// Then convert to XYZ
+		
 
 	// Process the quantized tiles with SIMD for if they all are the same quantized colour, if so then keep going until we find edge points (where it stops), same with the other colours.
 	// We then merge the edge points into the polygon with the largest area
@@ -216,5 +1117,6 @@ void TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 
 	// May also want to look into triplanar mapping for my scenarios.
 
-
+	//return kuwaharaT;
+	return quantizedT;
 }

@@ -482,6 +482,11 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
 
     doOnce = true;
     start = std::chrono::high_resolution_clock::now();
+
+    // We know that each viewvertex also contains the interpolated world position  of the vertex, which should be shared between the two vertices.
+    // Let's simply round that value to 8 decimal places and use it for our check of the colours
+    //std::unordered_map<int64_t, std::vector<Colour>> colourBlender;
+
     // ---- Vertex Shading & Lighting [TODO] ----
     for (TriangleNode& n : context.nodePool) {
         ViewVertex& v0 = n.v0;
@@ -510,15 +515,36 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
             float shiftAmount = 0.15;
 
             Vec2<float> uv0Shifted = v0.GetUV() + (triMidpointUV - v0.GetUV()) * shiftAmount;
-            Vec2<float> uv1Shifted = v1.GetUV() + (triMidpointUV - v1.GetUV()) * shiftAmount;;
-            Vec2<float> uv2Shifted = v2.GetUV() + (triMidpointUV - v2.GetUV()) * shiftAmount;;
+            Vec2<float> uv1Shifted = v1.GetUV() + (triMidpointUV - v1.GetUV()) * shiftAmount;
+            Vec2<float> uv2Shifted = v2.GetUV() + (triMidpointUV - v2.GetUV()) * shiftAmount;
 
+            //This way is the old idea, instead let's attempt to use a method which blends the same vertices 2 separate colours to reduce triangle artifacts.
             v0.SetColour(m.map_Kd->SampleBilinear(uv0Shifted));
             v1.SetColour(m.map_Kd->SampleBilinear(uv1Shifted));
             v2.SetColour(m.map_Kd->SampleBilinear(uv2Shifted));
+
+            /*Colour c0 = m.map_Kd->SampleBilinear(uv0Shifted);
+            Colour c1 = m.map_Kd->SampleBilinear(uv1Shifted);
+            Colour c2 = m.map_Kd->SampleBilinear(uv2Shifted);
+
+            uint32_t x = static_cast<uint32_t>(std::floorf(v0.GetWorldPosition().x * 300 + 1000000000));
+            uint32_t y = static_cast<uint32_t>(std::floorf(v0.GetWorldPosition().y * 300 + 1000000000));
+            colourBlender[MakeEdgeKey(x, y)].push_back(c0);
+
+            x = static_cast<uint32_t>(std::floorf(v1.GetWorldPosition().x * 300000 + 1000000000));
+            y = static_cast<uint32_t>(std::floorf(v1.GetWorldPosition().y * 300000 + 1000000000));
+            colourBlender[MakeEdgeKey(x, y)].push_back(c1);
+
+            x = static_cast<uint32_t>(std::floorf(v2.GetWorldPosition().x * 300000 + 1000000000));
+            y = static_cast<uint32_t>(std::floorf(v2.GetWorldPosition().y * 300000 + 1000000000));
+            colourBlender[MakeEdgeKey(x, y)].push_back(c2);*/
+
+
+            // this pass we will sample and then store it into the vertex 
         }
         //*/
     }
+
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     start = std::chrono::high_resolution_clock::now();

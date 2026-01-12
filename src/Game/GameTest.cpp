@@ -120,8 +120,11 @@ void Init()
 
 	//TriangleNode::MAX_DEPTH = 15;
 
-	std::string t = "./data/Textures/Wall/brickwall.tga";
-	TextureLoader::textureMap["brickwall"] = TextureLoader::ProcessTGA(t);
+	//std::string t = "./data/Textures/Wall/brickwall.tga";
+	//std::string t = "./data/Textures/Rock/RockColour.tga";
+	std::string t = ".data/Textures/Rock/StoneBricksColour.tga";
+	//TextureLoader::textureMap["brickwall"] = TextureLoader::ProcessTGA(t);
+	TextureLoader::textureMap["brickwall"] = TextureLoader::GenerateTextureTopology(t);
 	quadMeshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
 
 	/*foxVerts = fox.GetMeshes()[0].geometry->processedMesh;
