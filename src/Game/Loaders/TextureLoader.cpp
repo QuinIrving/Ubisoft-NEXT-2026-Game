@@ -264,8 +264,9 @@ namespace {
 		// Anisotropic Kuwahara Pass
 		Vec2<float> orientation = { orientationAndAnisotropy.x, orientationAndAnisotropy.y };
 
-		float alpha = 1.f;
+		//float alpha = 25.f;
 		//float alpha = 12.f;
+		float alpha = 1.f;
 		float anisotropy = (orientationAndAnisotropy.z - orientationAndAnisotropy.w) / (orientationAndAnisotropy.z + orientationAndAnisotropy.w + EPSILON);
 
 		float scaleX = alpha / (anisotropy + alpha);
@@ -315,7 +316,7 @@ namespace {
 				float weight = GetGaussianWeight(pixelOffset.GetMagnitude(), sigma);
 
 				// Polynomial way (faster):
-				//float weight = GetAnisotropicPolynomialWeight(pixelOffset.x, pixelOffset.y, eta, lambda);
+				//float weight = GetPolynomialWeight(pixelOffset.x, pixelOffset.y, eta, lambda);
 
 				colourSum += rgb * weight;
 				colourSumSquared += rgb * rgb * weight;
@@ -619,7 +620,8 @@ namespace {
 
 		}*/
 
-		const int KERNEL_SIZE = 7;//5;
+		const int KERNEL_SIZE = 7;
+		//const int KERNEL_SIZE = 5;
 		//const int SECTOR_COUNT = 4;
 
 		//std::vector<Vec3<float>> boxAvgCols;
@@ -918,7 +920,9 @@ struct LABBox {
 };
 
 void ComputeBounds(LABBox& box, const std::vector<LABPixel>& pixels) {
-	box.min = { FLT_MIN, FLT_MAX, FLT_MAX };
+	//box.min = { FLT_MAX, FLT_MAX, FLT_MAX };
+	box.min = { FLT_MIN, FLT_MAX, FLT_MAX }; // This bug actually seems to help us with blending, as it reduces luminance as a factor.
+	//box.min = { -FLT_MAX, FLT_MAX, FLT_MAX };
 	box.max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
 
 	for (int i : box.indices) {
@@ -977,6 +981,7 @@ std::vector<Vec3<float>> BuildLABPalette(
 	std::vector<LABBox> boxes;
 
 	LABBox root;
+	//root.indices.reserve(pixels.size());
 	root.indices.resize(pixels.size());
 	for (int i = 0; i < pixels.size(); ++i) {
 		root.indices.push_back(i);
@@ -994,6 +999,7 @@ std::vector<Vec3<float>> BuildLABPalette(
 
 		for (int i = 0; i < (int)boxes.size(); ++i) {
 			Vec3<float> e = boxes[i].max - boxes[i].min;
+			//float extent = std::max<float>({ e.x * 0.5f, e.y, e.z });
 			float extent = std::max<float>({ e.x, e.y, e.z });
 			if (extent > bestExtent && boxes[i].indices.size() > 1) {
 				bestExtent = extent;
@@ -1071,14 +1077,102 @@ Texture LABQuantizeImage(Texture& t, int numColours) {
 		Vec3<float> lab = { labPixels[i].L, labPixels[i].a, labPixels[i].b };
 		int idx = FindNearestLAB(lab, palette);
 
-		Vec3<float> rgb = XYZToLinear(LABToXYZ(palette[idx]));//LinearTosRGB(XYZToLinear(LABToXYZ(palette[idx])));
+		Vec3<float> rgb = XYZToLinear(LABToXYZ(palette[idx]));
+		//Vec3<float> rgb = LinearTosRGB(XYZToLinear(LABToXYZ(palette[idx])));
+		//Vec3<float> rgb = LinearTosRGB(XYZToLinear(LABToXYZ(lab)));
 
-		quantizedPixels.push_back(Colour(rgb.x, rgb.y, rgb.z, 1.f));
+		quantizedPixels.push_back(Colour(rgb.x, rgb.y, rgb.z, idx));
 	}
 
 	quantizedT.texels = quantizedPixels;
 	
 	return quantizedT;
+}
+
+enum EdgeType {
+	HORIZONTAL, // (when an edge goes down, it has a horizontal edge that connects the two pixels)
+	VERTICAL // When a pixel moves to the right, it has a vertical edge that connects them.
+};
+
+struct Edge {
+	Vec2<float> pixel0;
+	Vec2<float> pixel1;
+	uint32_t region0ID;
+	uint32_t region1ID;
+	EdgeType edgeType;
+};
+
+struct HalfEdge {
+	Vec2<int> from;
+	Vec2<int> to;
+	uint32_t regionID;
+};
+
+//std::vector<Edge> FindRegionContours(Texture& t) {
+Texture FindRegionContours(Texture& t) {
+
+	std::vector<Edge> edges;
+	edges.reserve(t.width * t.height); // rough guess.
+
+	std::vector<Colour> outlines;
+	outlines.reserve(t.width * t.height);
+
+	for (int h = 0; h < t.height; ++h) {
+		for (int w = 0; w < t.width; ++w) { // To make life simpler here for now, let's assume we won't add edges to the borders of the texture, they are implicitly there when we go to make polygons.
+			// right neighbour check
+			int r = std::min<int>(w + 1, t.width - 1);
+			uint32_t region0ID = static_cast<uint32_t>(t.texels[h * t.width + w].a); // remember we stuffed our alpha value with the colour id.
+			uint32_t region1ID = static_cast<uint32_t>(t.texels[h * t.width + r].a); 
+
+			Colour c = Colour(0.f, 0.f, 0.f, 1.f);
+
+			if (region0ID != region1ID) { 
+				edges.push_back({ Vec2<float>(w, h), Vec2<float>(r, h), region0ID, region1ID, EdgeType::VERTICAL });
+				c = Colour(1.f, 1.f, 1.f, 1.f);
+			}
+
+			// bottom neighbour check
+			int b = std::min<int>(h + 1, t.height - 1);
+			region1ID = static_cast<uint32_t>(t.texels[b * t.width + w].a);
+
+			if (region0ID != region1ID) {
+				edges.push_back({ Vec2<float>(w, h), Vec2<float>(w, b), region0ID, region1ID, EdgeType::HORIZONTAL});
+				c = Colour(1.f, 1.f, 1.f, 1.f);
+			}
+
+			outlines.push_back(c);
+		}
+	}
+
+	Texture tNew = t;
+	tNew.texels = outlines;
+	return tNew;
+	//return edges;
+}
+
+void ChainEdgesToPolygons(std::vector<Edge>& edges) {
+	// WE are going to use the convention:
+	// Region interior is on the left, and the polygon is CCW.
+
+	/* -- Can remove after, just reference --
+	* When building polygons for region R:
+	* if (edge.r0 == R) then use edge as a->b
+	* else if (edge.r1 == R) then use edge as b->a
+	* else, discard.
+	
+	// Walk edge CCW.
+
+	*/
+
+
+}
+
+void SimplifyPolygons() {
+
+}
+
+void TriangulatePolygons() {
+
 }
 
 
@@ -1093,20 +1187,31 @@ Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 	
 
 	//  Do LAB conversion, Quantize it with our set of colours (16) [WE SHOULD HAVE A DIRECT INITIALIZED COLOUR LIST PALETTE FOR OURSELVES), and tile the pixels for SIMD
-	Texture quantizedT = LABQuantizeImage(kuwaharaT, 32);
-		// potentially do sRGB correction if it's non-linear.
-		// Then convert to XYZ
-		
+	Texture quantizedT = LABQuantizeImage(kuwaharaT, 2);
 
-	// Process the quantized tiles with SIMD for if they all are the same quantized colour, if so then keep going until we find edge points (where it stops), same with the other colours.
-	// We then merge the edge points into the polygon with the largest area
+	// Our alpha value for our colour of the quantized texture ppoints to a specific label per pixel for which colour index it is, that way we can find more of the same
+			// we use this to find and create a pixel-exact segmentation graph, for our region boundaries (topology edges)
+
+	// WE will process each pixel for it's id, and check each up/down, left/right pixel to see if we are the same colour id, if not then it must be a part of a border segment
+	// that we keep track of with an edge struct. We can then later use that to combine and create the 
+	auto edges = FindRegionContours(quantizedT);
+	//ChainEdgesToPolygons(edges);
 
 
-	// Apply Douglas peucker simplification, ^ may have to be before the merging of edge points
+			// Then we will turn our boundaries into continuous contours via contour tracing (Moore-neighbour tracing) or (Suzuki Abe)
+				// OLD!: Process the quantized tiles with SIMD for if they all are the same quantized colour, if so then keep going until we find edge points (where it stops), same with the other colours.
+				// OLD!: We then merge the edge points into the polygon with the largest area
 
 
-	// Finally Do a max area triangulation of the polygon (it's alright if we reduce the points more strongly, as later on we sample towards center of triangle)
-	// Either ear-clipping or if need be for speed -> constrained delaunay triangulation
+	// Apply Ramer Douglas Peucker simplification, ^ may have to be before the merging of edge points
+
+
+	// We now convert our contours to constraints: We have Quad boundary, and internal constraint edges (contours), we have it as a planar straight line graph (PSLG)
+
+	// Finally triangulate using constrained triangulation:
+	// Constrained Delaunay Triangulation
+
+	// We can also assign region id's to triangles, allowing for region shading, flat colour, edge strokes, and NPR effects.
 
 
 	// In the actual pipeline probably specifically for quads, spheres, cubes, and cylinders (generated instead of OBJ loaded) we will generate vertices based on interpolated distance from UV on
@@ -1118,5 +1223,6 @@ Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 	// May also want to look into triplanar mapping for my scenarios.
 
 	//return kuwaharaT;
-	return quantizedT;
+	//return quantizedT;
+	return edges;
 }

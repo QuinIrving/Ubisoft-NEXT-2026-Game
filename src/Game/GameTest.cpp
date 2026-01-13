@@ -120,9 +120,12 @@ void Init()
 
 	//TriangleNode::MAX_DEPTH = 15;
 
-	//std::string t = "./data/Textures/Wall/brickwall.tga";
+	std::string t = "./data/Textures/Wall/brickwall.tga";
 	//std::string t = "./data/Textures/Rock/RockColour.tga";
-	std::string t = ".data/Textures/Rock/StoneBricksColour.tga";
+	//std::string t = "./data/Textures/Rock/StoneBricksColour.tga";
+	//std::string t = "./data/Textures/Rock/PavingStonesColor.tga";
+	//std::string t = "./data/Textures/Rock/TilesPatternColor.tga";
+	//std::string t = "./data/Textures/Rock/TilesCheckeredColor.tga";
 	//TextureLoader::textureMap["brickwall"] = TextureLoader::ProcessTGA(t);
 	TextureLoader::textureMap["brickwall"] = TextureLoader::GenerateTextureTopology(t);
 	quadMeshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
@@ -204,7 +207,7 @@ void Update(const float deltaTime)
 	{
 		testSprite->SetScale(testSprite->GetScale() + 0.1f);
 		if (frames > 16) {
-			NodeDepth::MAX_DEPTH = std::min<int>(NodeDepth::MAX_DEPTH + 1, 16);
+			NodeDepth::MAX_DEPTH = std::min<int>(NodeDepth::MAX_DEPTH + 1, 20);
 			frames = 0;
 		}
 	}
