@@ -1470,7 +1470,7 @@ std::vector<Poly> EmbedPolyHoles(std::vector<Circuit> circuits, uint64_t totalIm
 
 	// Now that we know which circuits are holes within another, we can simply go through each, and add them into whichever polygon they reside.
 	// We will make this work for holes within a polygon that is a hole of another polygon, but looping through all circuits, and choosing the one we match with, that contains the lowest total area.
-	for (Poly& c : holes) {
+	/*for (Poly& c : holes) {
 		// check the smallest area polygon that contains it, as we could technically have holes within holes. (or technically speaking poly's inside of poly's inside of poly's but whatever)
 		float largestArea = -1.f;
 		uint32_t polyIdx;
@@ -1484,14 +1484,398 @@ std::vector<Poly> EmbedPolyHoles(std::vector<Circuit> circuits, uint64_t totalIm
 
 		// then if we found a home, we should also ensure we keep the hole inside of the polygon, as we simplified which could push the vertices out of it
 
-	}
+	}*/
 
 	return embeddedPolygons;
 }
 
+struct Tri {
+	Vec2<float> v0, v1, v2;
+	uint32_t regionID;
+};
 
-void TriangulatePolygons() {
 
+// 1 If the point is to the right of the segment, 0 if the point is to the left of the segment 
+int PointDirectionFromLineSegment(Vec2<float> lineA, Vec2<float> lineB, Vec2<float> point) {
+	float dir = (lineA - lineB).CrossProduct(lineA - point);
+	return (dir < 0) ? 1 : 0;
+}
+
+bool DoLineSegmentsIntersect(Vec2<float> a1, Vec2<float> b1, Vec2<float> a2, Vec2<float> b2) {
+	Vec2<float> a1b1 = b1 - a1;
+	Vec2<float> lineB1B2 = b2 - b1;
+	Vec2<float> lineB1A2 = a2 - b1;
+
+	bool intersect = false;
+	
+	if (a1b1.CrossProduct(lineB1B2) * a1b1.CrossProduct(lineB1A2) >= 0) {
+		// The two line segments don't pass the first check of intersection
+		return false;
+	}
+
+	Vec2<float> a2b2 = b2 - a2;
+	Vec2<float> lineB2B1 = b1 - b2;
+	Vec2<float> lineB2A1 = a1 - b2;
+
+	if (a2b2.CrossProduct(lineB2B1) * a2b2.CrossProduct(lineB2A1) >= 0) {
+		// The two line segments don't pass the second check of intersection
+		return false;
+	}
+
+	return true;
+}
+
+bool IsQuadrilateralConvex(Vec2<float> p1, Vec2<float> p2, Vec2<float> p3, Vec2<float> p4) {
+	std::vector<Vec2<float>> edges;
+
+	edges.push_back(p2 - p1);
+	edges.push_back(p3 - p2);
+	edges.push_back(p4 - p3);
+	edges.push_back(p1 - p4);
+
+	bool firstSignNegative;
+
+	for (int i = 0; i < edges.size(); ++i) {
+		int nextEdgeIdx = (i + 1) % edges.size();
+		
+		float cross = edges[i].CrossProduct(edges[nextEdgeIdx]);
+		if (i == 0) {
+			firstSignNegative = cross < 0;
+			continue;
+		}
+
+		// Check to ensure that all the rest of the edges have the same sign, if so then convex
+		bool isCurrEdgeNegative = cross < 0;
+
+		if (isCurrEdgeNegative != firstSignNegative) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
+	// we simply want to CDT all of our polygon vertices (perhaps with us also adding in a point towards the center of each polygon for additional detail if it doesn't work all that well
+	// finally, when we triangulate, we will then divide the final positions by the image height and width to get proper UV coords for our quad
+	// we are also constraining CDT to have constraint edges along the borders of the quad (0,0),  (1,0), (1,1), (0, 1)... we want to include proper edges for if there are certian points on the
+	// border as well that aren't corners, so we need to ensure we do proper constraint building afterwards.
+
+	/*
+	Since we have constraint edges, not only will we create constraint edges around the quad, but will also add them to the circuit of the polygon itself, if there are duplicates, 
+	I don't believe that should technically be a problem. We also again may add a vertex in the middle of each polygon just to add extra detail if necessary
+	*/
+
+	// First, let's begin by unboxing our vertices in our polygons, move them into the correcr 0->1 (relative to only 1 either width or height whichever is larger) float range, and 
+	// keep track of the constraint edges we want (can also add in corner points at this point if need be, as well as finish up adding border constraints.
+	std::vector<Vec2<float>> allPoints;
+	std::vector<Vec2<uint64_t>> allConstraintEdges;
+	//std::vector<Vec2<int>> cornerPointsToAdd = { {0, 0}, {0, t.height}, {t.width, 0 }, {t.width, t.height} }; // If we find one of these when unboxing our points, we can remove it as it is there
+	//std::unordered_set<uint64_t> isVertexAdded; // Since we share pointers of vertices, we don't want duplicate points in our triangulation as it will break it;
+	std::unordered_map<uint64_t, std::vector<uint64_t>> isConstraintAdded; // Similarly we want to keep track if we already added the constraint here, we keep track of the to->from vertex, and make duplicate
+	// 2 entries for both ways to make it simple for us as the other polygon will have an edge going the opposite direction (although not certain when closing borders up
+	std::unordered_map<uint64_t, uint64_t> vertexIdx;
+
+	float largestScale = static_cast<float>(std::max<int>(t.width, t.height)); // This will be used to divide all points x, and y, and then for final UV's we can multiply by it, and then divide
+	// by it's respective scale (width : x, or height : y).
+	float invLargestScale = 1.f / largestScale;
+
+	// I can also add in a vertex in the center of each polygon as I loop through this.
+	for (Poly& p : polygons) {
+		// We need our p.area from shoelace theorem to calculate centroid coordinates.
+		// To find the centroid coords, average the positions of the edges weighted by the area they enclose:
+		// Cx = (1/(6*area)) * Sum of edges: (xi + xi+1) * (xi*yi+1 - xi+1*yi) 
+		// Cy = (1/(6*area)) * Sum of edges: (yi + yi+1) * (xi*yi+1 - xi+1*yi)
+		// The +1 simply denotes the other vertex on the edge.
+		
+		int polyStartIdx = allPoints.size(); // useful for us to grab the correct index when making an edge between the start and the end.
+		float centroidX = 0.f;
+		float centroidY = 0.f;
+
+		for (int i = 0; i < p.outerVertices.size(); ++i) {
+			auto& v = p.outerVertices[i];
+			uint64_t vKey = MakeEdgeKey(v->x, v->y);
+
+			// If the vertex is not already added to the "point cloud" array, then add it in
+			if (vertexIdx.find(vKey) == vertexIdx.end()) {
+				allPoints.push_back(Vec2<float>(std::min<float>(v->x * invLargestScale, 1.f), std::min<float>(v->y * invLargestScale, 1.f)));
+				vertexIdx[vKey] = allPoints.size() - 1; // as we just pushed it in.
+			}
+
+			int vertIdx = vertexIdx[vKey];
+
+			auto& vNext = p.outerVertices[(i + 1) % p.outerVertices.size()];
+			uint64_t vNextKey = MakeEdgeKey(vNext->x, vNext->y);
+			
+			int nextVertIdx;
+
+			// First see if the next vertex is already added:
+			if (vertexIdx.find(vNextKey) != vertexIdx.end()) {
+				nextVertIdx = vertexIdx[vNextKey];
+			}
+			else {
+				// we can safely assume if it's the start idx, it would already have been added, as that's processed before the end vertex.
+				nextVertIdx = allPoints.size();
+			}
+			
+
+			// Even though there is a duplicated edge, we still need add it to our centroid calculation, as it is a per-polygon thing.
+			// CENTROID ADDITION STUFF -> SKIP FOR NOW.
+
+
+			// Check if we already have added the constraint edge.
+			if (isConstraintAdded.find(vKey) != isConstraintAdded.end()) {
+				bool edgeExists = false;
+				// Check if the specific other vertex for our edge is within the other 
+				for (uint64_t& edgeKey : isConstraintAdded[vKey]) {
+					if (edgeKey == vNextKey) {
+						edgeExists = true;
+						break;
+					}
+				}
+
+				if (edgeExists) {
+					continue;
+				}
+			}
+
+			// at this point, the edge is not already, so we can add it.
+			isConstraintAdded[vKey].push_back(vNextKey);
+			isConstraintAdded[vNextKey].push_back(vKey);
+			allConstraintEdges.push_back(Vec2<uint64_t>(vKey, vNextKey));
+		}
+
+		// Finally check if the centroid position is already in the list, we do this by first checking if it's decimal has enough zeros at the start, if not then we should never have added it.
+		// else wise, we then need to check if a vertex at that roughly two int positions exists, and only then do we cull it. (Should generally be safe, but we should keep track of centroids, as
+		// they can technically converge on each other (there is that worry of a hole which the centroid is within, and then the hole has a centroid as well on same position)?
+		// But let's not worry unless there is a major issue.
+
+	}
+
+	// Finally, add in the missing corner points, and add in the necessary edges to the border
+	if (vertexIdx.find(MakeEdgeKey(0, 0)) == vertexIdx.end()) {
+		vertexIdx[MakeEdgeKey(0, 0)] = allPoints.size();
+		allPoints.push_back({ 0.f, 0.f });
+	}
+
+	if (vertexIdx.find(MakeEdgeKey(0, t.height)) == vertexIdx.end()) {
+		vertexIdx[MakeEdgeKey(0, t.height)] = allPoints.size();
+		allPoints.push_back({ 0.f, std::min<float>(t.height * invLargestScale, 1.f) });
+	}
+
+	if (vertexIdx.find(MakeEdgeKey(t.width, 0)) == vertexIdx.end()) {
+		vertexIdx[MakeEdgeKey(t.width, 0)] = allPoints.size();
+		allPoints.push_back({ std::min<float>(t.width * invLargestScale, 1.f), 0.f });
+	}
+
+	if (vertexIdx.find(MakeEdgeKey(t.width, t.height)) == vertexIdx.end()) {
+		vertexIdx[MakeEdgeKey(t.width, t.height)] = allPoints.size();
+		allPoints.push_back({ std::min<float>(t.width * invLargestScale, 1.f), std::min<float>(t.height * invLargestScale, 1.f) });
+	}
+
+	Vec2<uint32_t> startPoint = { 0, 0 };
+	uint64_t startKey;
+	//bool haveAtLeastOneEdge = false;
+
+	// Constrain All Quad Left Edges:
+	for (uint32_t h = 1; h <= t.height; ++h) {
+		uint64_t newVertKey = MakeEdgeKey(0, h);
+		if (vertexIdx.find(newVertKey) == vertexIdx.end()) {
+			continue;
+		}
+
+		startKey = MakeEdgeKey(startPoint.x, startPoint.y);
+
+		// at this point we found a vertex on the border, double check there is an edge between the start point and this new vertex, if not then create one.
+		if (isConstraintAdded.find(newVertKey) != isConstraintAdded.end()) {
+			bool edgeExists = false;
+			// Check if the specific other vertex for our edge is within the other 
+			for (uint64_t& edgeKey : isConstraintAdded[newVertKey]) {
+				if (edgeKey == startKey) {
+					edgeExists = true;
+					break;
+				}
+			}
+
+			if (edgeExists) {
+				startPoint = Vec2<uint32_t>(0, h);
+				//haveAtLeastOneEdge = true;
+				continue;
+			}
+		}
+
+		// If we reach here, we should create an edge between these two points and continue.
+		allConstraintEdges.push_back(Vec2<uint64_t>(startKey, newVertKey));
+		isConstraintAdded[startKey].push_back(newVertKey);
+		isConstraintAdded[newVertKey].push_back(startKey);
+
+		startPoint = { 0, h };
+		//haveAtLeastOneEdge = true;
+	}
+
+	
+	startPoint = Vec2<uint32_t>(t.width, 0);
+
+	// Constrain All Quad Right Edges:
+	for (uint32_t h = 1; h <= t.height; ++h) {
+		uint64_t newVertKey = MakeEdgeKey(t.width, h);
+		if (vertexIdx.find(newVertKey) == vertexIdx.end()) {
+			continue;
+		}
+
+		startKey = MakeEdgeKey(startPoint.x, startPoint.y);
+
+		// at this point we found a vertex on the border, double check there is an edge between the start point and this new vertex, if not then create one.
+		if (isConstraintAdded.find(newVertKey) != isConstraintAdded.end()) {
+			bool edgeExists = false;
+			// Check if the specific other vertex for our edge is within the other 
+			for (uint64_t& edgeKey : isConstraintAdded[newVertKey]) {
+				if (edgeKey == startKey) {
+					edgeExists = true;
+					break;
+				}
+			}
+
+			if (edgeExists) {
+				startPoint = Vec2<uint32_t>(t.width, h);
+				continue;
+			}
+		}
+
+		// If we reach here, we should create an edge between these two points and continue.
+		allConstraintEdges.push_back(Vec2<uint64_t>(startKey, newVertKey));
+		isConstraintAdded[startKey].push_back(newVertKey);
+		isConstraintAdded[newVertKey].push_back(startKey);
+
+		startPoint = { static_cast<uint32_t>(t.width), h };
+	}
+
+	startPoint = Vec2<uint32_t>(0, 0);
+	// Constrain All Quad Top Edges:
+	for (uint32_t w = 1; w <= t.width; ++w) {
+		uint64_t newVertKey = MakeEdgeKey(w, 0);
+		if (vertexIdx.find(newVertKey) == vertexIdx.end()) {
+			continue;
+		}
+
+		startKey = MakeEdgeKey(startPoint.x, startPoint.y);
+
+		// at this point we found a vertex on the border, double check there is an edge between the start point and this new vertex, if not then create one.
+		if (isConstraintAdded.find(newVertKey) != isConstraintAdded.end()) {
+			bool edgeExists = false;
+			// Check if the specific other vertex for our edge is within the other 
+			for (uint64_t& edgeKey : isConstraintAdded[newVertKey]) {
+				if (edgeKey == startKey) {
+					edgeExists = true;
+					break;
+				}
+			}
+
+			if (edgeExists) {
+				startPoint = Vec2<uint32_t>(w, 0);
+				continue;
+			}
+		}
+
+		// If we reach here, we should create an edge between these two points and continue.
+		allConstraintEdges.push_back(Vec2<uint64_t>(startKey, newVertKey));
+		isConstraintAdded[startKey].push_back(newVertKey);
+		isConstraintAdded[newVertKey].push_back(startKey);
+
+		startPoint = { w, 0 };
+	}
+
+	startPoint = Vec2<uint32_t>(0, t.height);
+	// Constrain All Quad Bottom Edges:
+	for (uint32_t w = 1; w <= t.width; ++w) {
+		uint64_t newVertKey = MakeEdgeKey(w, t.height);
+		if (vertexIdx.find(newVertKey) == vertexIdx.end()) {
+			continue;
+		}
+
+		startKey = MakeEdgeKey(startPoint.x, startPoint.y);
+
+		// at this point we found a vertex on the border, double check there is an edge between the start point and this new vertex, if not then create one.
+		if (isConstraintAdded.find(newVertKey) != isConstraintAdded.end()) {
+			bool edgeExists = false;
+			// Check if the specific other vertex for our edge is within the other 
+			for (uint64_t& edgeKey : isConstraintAdded[newVertKey]) {
+				if (edgeKey == startKey) {
+					edgeExists = true;
+					break;
+				}
+			}
+
+			if (edgeExists) {
+				startPoint = Vec2<uint32_t>(w, t.height);
+				continue;
+			}
+		}
+
+		// If we reach here, we should create an edge between these two points and continue.
+		allConstraintEdges.push_back(Vec2<uint64_t>(startKey, newVertKey));
+		isConstraintAdded[startKey].push_back(newVertKey);
+		isConstraintAdded[newVertKey].push_back(startKey);
+
+		startPoint = { w, static_cast<uint32_t>(t.height) };
+	}
+
+	// Regular Delaunay Triangulation
+		// Have to keep track of my constraint edges, and add in the proper border constraints to fill in what's missing as necessary for usage in the next part.
+
+	/*
+	Make big triangle that contains point set (really big)
+	Add points 1 by 1,
+		- What triangle is it in?
+		- break that triangle into 3 connected to your point
+		- Swap edges to make sure magic delaunay condition isn't violated (may have a lot of outward propagation)
+	- At the end, kill anything to do with the big triangle.
+
+	---
+	For every triangle you are adding, ensure the D is the first vertex in your structure for adjacencies and stuff. So if we have ABC, and insert D, it should be DAB, DCA, DBC
+	Part A: Scale point cloud to 0,0 to 1,1 (so we should automatically turn our points into scaled floats, kind of like we expected.
+		Can still easily do the per-vertex check, and the edge check, due to use iterating through our points)
+	0-1, and other 0->8 so we divide both by the same largest size one I guess? a.k.a if our image height and width are different then there could be some annoyances, but not too much,
+		as we can simply re multiply it out by what we divide and then divide again by the correct dimension?
+	Don't want to handle elipses
+	Step B: Again opptional, but can sort points by proximity, divide domain into bins and reorder points in a continuous bin sequence (could simply be my polygons themselves?)
+	denote points via trace through that grid, not sure if we actually want  to do that, but if it's really slow, then sure lol
+
+	Step C: Make big triangle (-100, -100,), (0, 100), and (100, -100) for the triangle if we mapped to 0->1 all coords
+	Step D: Loop through points and find containing triangle, same old same old. Do this via computing normals of each edge of the triangle and then compute the dot product of the point with each edge normal, if all of those dot products are the same sign, then P is contained wihin that triangle
+	It also considers it inside if it's on the boundary
+	So technically also contained if 2 with same sign and 1 with a 0 value
+	Step D2: Triangle search algorithm.
+	Should constantly move in direction of point of interest via first taking the dot product of all of the edges outward normal of the triangle, and if it is positive, go in that direction. ANd keep going until you reach the point p
+	Step E:
+	Check magic Delaunay condition
+	Tells you if you have to swap diagonals or not in triangles.
+	Step F:
+	Where condition fails, swap diagonals.
+
+	Data structure:
+	- Array for which vertices are part of which triangle,
+	- Array for which trianlges are adjacent to triangle you are talking about.
+
+	Keep track of vertex ordering, and triangle adjacency, and update adjacencies of those grey triangles too
+	Step G: Continue with the stack of triangles you are adding (use a stack), and see if you broke Delaunayness on the adjacent triangles, if yes swap diags and repreat F + G until stack is empty
+	Step H: Delete Big triangle
+	Step I: Map back to original domain
+	*/
+
+	// Let's attempt it here:
+
+	// Assume our big triangle will be (-100, -100,), (0, 100), and (100, -100) ( should I swap for CCW?)
+	std::vector<Vec2<float>> triangleVerts;
+	//s
+
+
+	// Now at this point we handle Constrained Delaunay Triangulation
+	/*
+	
+	*/
+
+	return {};
 }
 
 
@@ -1519,7 +1903,7 @@ Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 	std::vector<Circuit> circuitPolygons = ChainEdgesToPolygons(edges, outgoingEdges, vertexManager);
 	std::vector<Circuit> simplifiedCircuits = SimplifyPolygons(vertexManager, circuitPolygons, 1);
 	std::vector<Poly> polygons = EmbedPolyHoles(simplifiedCircuits, quantizedT.height * quantizedT.width);
-
+	std::vector<Tri> triangles = TriangulatePolygons(polygons, quantizedT);
 	int abc = 123;
 
 
