@@ -3,9 +3,33 @@
 #include <ios>
 #include <algorithm>
 #include <Math/MathConstants.h>
+#include <unordered_set>
 
 namespace TextureLoader {
 	std::unordered_map<std::string, Texture> textureMap;
+}
+
+namespace {
+	enum GridDirection {
+		UP,
+		RIGHT,
+		DOWN,
+		LEFT
+	};
+
+	uint64_t MakeEdgeKey(uint32_t a, uint32_t b) {
+		uint64_t key = (static_cast<uint64_t>(a) << 32) | b;
+		return key;
+	}
+
+	static const GridDirection CCWPriority[4][3] = {
+		{ GridDirection::LEFT, GridDirection::UP, GridDirection::RIGHT }, // UP
+		{ GridDirection::UP, GridDirection::RIGHT, GridDirection::DOWN }, // RIGHT
+		{ GridDirection::RIGHT, GridDirection::DOWN, GridDirection::LEFT }, // DOWN
+		{ GridDirection::DOWN, GridDirection::LEFT, GridDirection::UP } // LEFT
+	};
+
+	constexpr uint32_t OUTSIDE_REGION = 0xFFFFFFFF;
 }
 
 enum TGAImageType {
@@ -1102,74 +1126,369 @@ struct Edge {
 	EdgeType edgeType;
 };
 
-struct HalfEdge {
-	Vec2<int> from;
-	Vec2<int> to;
+struct HalfEdge { // Emit 2 of these, one for each
+	Vec2<uint32_t> from; // vertex not pixel 0,0 = top left corner vertex on grid.
+	Vec2<uint32_t> to; // vertex not pixel
 	uint32_t regionID;
 };
 
-//std::vector<Edge> FindRegionContours(Texture& t) {
-Texture FindRegionContours(Texture& t) {
+GridDirection GetEdgeDirection(const HalfEdge& e) {
+	if (e.to.x > e.from.x) { return GridDirection::RIGHT; }
+	else if (e.to.x < e.from.x) { return GridDirection::LEFT; }
+	else if (e.to.y > e.from.y) { return GridDirection::UP; }
+	
+	return GridDirection::DOWN;
+}
 
-	std::vector<Edge> edges;
-	edges.reserve(t.width * t.height); // rough guess.
+std::vector<HalfEdge> FindRegionContours(Texture& t) {
+//Texture FindRegionContours(Texture& t) {
 
-	std::vector<Colour> outlines;
-	outlines.reserve(t.width * t.height);
+	//std::vector<Edge> edges;
+	//edges.reserve(t.width * t.height); // rough guess.
 
-	for (int h = 0; h < t.height; ++h) {
-		for (int w = 0; w < t.width; ++w) { // To make life simpler here for now, let's assume we won't add edges to the borders of the texture, they are implicitly there when we go to make polygons.
+	//std::vector<Colour> outlines;
+	//outlines.reserve(t.width * t.height);     
+
+	std::vector<HalfEdge> edges;
+	edges.reserve(t.width * t.height); // rough guess
+
+	for (uint32_t h = 0; h < t.height; ++h) {
+		for (uint32_t w = 0; w < t.width; ++w) { // To make life simpler here for now, let's assume we won't add edges to the borders of the texture, they are implicitly there when we go to make polygons.
 			// right neighbour check
-			int r = std::min<int>(w + 1, t.width - 1);
+			uint32_t r = std::min<uint32_t>(w + 1, t.width - 1);
 			uint32_t region0ID = static_cast<uint32_t>(t.texels[h * t.width + w].a); // remember we stuffed our alpha value with the colour id.
 			uint32_t region1ID = static_cast<uint32_t>(t.texels[h * t.width + r].a); 
 
-			Colour c = Colour(0.f, 0.f, 0.f, 1.f);
+			//Colour c = Colour(0.f, 0.f, 0.f, 1.f);
 
 			if (region0ID != region1ID) { 
-				edges.push_back({ Vec2<float>(w, h), Vec2<float>(r, h), region0ID, region1ID, EdgeType::VERTICAL });
-				c = Colour(1.f, 1.f, 1.f, 1.f);
+				edges.push_back({ Vec2<uint32_t>(r, h), Vec2<uint32_t>(r, h + 1), region0ID}); // CCW for left pixel
+				edges.push_back({ Vec2<uint32_t>(r, h + 1), Vec2<uint32_t>(r, h), region1ID }); // CCW for right region (via reversing direction)
+				
+				//edges.push_back({ Vec2<float>(w, h), Vec2<float>(r, h), region0ID, region1ID, EdgeType::VERTICAL });
+				//c = Colour(1.f, 1.f, 1.f, 1.f);
 			}
 
 			// bottom neighbour check
-			int b = std::min<int>(h + 1, t.height - 1);
+			uint32_t b = std::min<uint32_t>(h + 1, t.height - 1);
 			region1ID = static_cast<uint32_t>(t.texels[b * t.width + w].a);
 
 			if (region0ID != region1ID) {
-				edges.push_back({ Vec2<float>(w, h), Vec2<float>(w, b), region0ID, region1ID, EdgeType::HORIZONTAL});
-				c = Colour(1.f, 1.f, 1.f, 1.f);
+				edges.push_back({ Vec2<uint32_t>(w + 1, b), Vec2<uint32_t>(w, b), region0ID });// CCW for left pixel
+				edges.push_back({ Vec2<uint32_t>(w, b), Vec2<uint32_t>(w + 1, b), region1ID }); // CCW for right region (via reversing direction)
+
+				//edges.push_back({ Vec2<float>(w, h), Vec2<float>(w, b), region0ID, region1ID, EdgeType::HORIZONTAL});
+				//c = Colour(1.f, 1.f, 1.f, 1.f);
 			}
 
-			outlines.push_back(c);
+			//outlines.push_back(c);
 		}
 	}
 
-	Texture tNew = t;
-	tNew.texels = outlines;
-	return tNew;
-	//return edges;
+	// Need to also add in edges for the border vertices here, special case of only 1 half-edge per edge. 4 lines.
+	for (uint32_t h = 0; h < t.height; ++h) {
+		// add in half-edges for left, and right walls
+		uint32_t regionID = static_cast<uint32_t>(t.texels[h * t.width].a);
+		edges.push_back({ Vec2<uint32_t>(0, h + 1), Vec2<uint32_t>(0, h), regionID });
+
+		regionID = static_cast<uint32_t>(t.texels[h * t.width + (t.width - 1)].a);
+		edges.push_back({ Vec2<uint32_t>(t.width, h), Vec2<uint32_t>(t.width, h + 1), regionID });
+	}
+
+	for (uint32_t w = 0; w < t.width; ++w) {
+		// add in half edges for top, and bottom walls.
+		uint32_t regionID = static_cast<uint32_t>(t.texels[w].a);
+		edges.push_back({ Vec2<uint32_t>(w, 0), Vec2<uint32_t>(w + 1, 0), regionID });
+
+		regionID = static_cast<uint32_t>(t.texels[(t.height - 1) * t.width + w].a);
+		edges.push_back({ Vec2<uint32_t>(w + 1, t.height), Vec2<uint32_t>(w, t.height), regionID });
+	}
+
+	//Texture tNew = t;
+	//tNew.texels = outlines;
+	//return tNew;
+	return edges;
 }
 
-void ChainEdgesToPolygons(std::vector<Edge>& edges) {
+std::unordered_map<uint64_t, std::vector<uint32_t>> BuildAdjacencyMap(std::vector<HalfEdge>& edges) {
+	std::unordered_map<uint64_t, std::vector<uint32_t>> outgoingEdges;
+	outgoingEdges.reserve(edges.size() * 2);
+
+	for (uint32_t edgeIdx = 0; edgeIdx < edges.size(); ++edgeIdx) {
+		const HalfEdge& e = edges[edgeIdx];
+		uint64_t gridVertexKey = MakeEdgeKey(e.from.x, e.from.y);
+		outgoingEdges[gridVertexKey].push_back(edgeIdx);
+	}
+
+	return outgoingEdges;
+}
+
+struct Circuit {
+	std::vector<std::weak_ptr<Vec2<uint32_t>>> vertices;
+	uint32_t regionID;
+
+	Circuit(std::vector<std::weak_ptr<Vec2<uint32_t>>> vertices, uint32_t regionID) : vertices(vertices), regionID(regionID) {};
+};
+
+uint32_t ChooseNextEdge(const std::vector<HalfEdge>& edges, const std::vector<uint32_t>& edgeCandidates, uint32_t regionID, GridDirection& prevDir, const std::vector<bool>& usedEdge) {
+	// remove candidates back to front that can't be a match
+	std::vector<uint32_t> realCandidates;
+	for (uint32_t edgeIndex : edgeCandidates) {
+		if (usedEdge[edgeIndex]) {
+			continue;
+		}
+
+		const HalfEdge& e = edges[edgeIndex];
+
+		if (e.regionID != regionID) {
+			continue;
+		}
+
+		realCandidates.push_back(edgeIndex);
+	}
+	
+	for (GridDirection desiredDir : CCWPriority[prevDir]) {
+		for (uint32_t edgeIndex : realCandidates) {
+			if (GetEdgeDirection(edges[edgeIndex]) == desiredDir) {
+				return edgeIndex;
+			}
+		}
+	}
+
+	throw std::runtime_error("Somehow choosing a next edge along a closed loop resulted in failure when attempting to chain polygons edges to polygons.");
+}
+
+
+std::vector<Circuit> ChainEdgesToPolygons(std::vector<HalfEdge>& edges, std::unordered_map<uint64_t, std::vector<uint32_t>>& outgoingEdges, std::unordered_map<uint64_t, std::shared_ptr<Vec2<uint32_t>>>& vertexManager) {
 	// WE are going to use the convention:
 	// Region interior is on the left, and the polygon is CCW.
 
-	/* -- Can remove after, just reference --
-	* When building polygons for region R:
-	* if (edge.r0 == R) then use edge as a->b
-	* else if (edge.r1 == R) then use edge as b->a
-	* else, discard.
+	std::vector<bool> usedEdge(edges.size(), false);
+	//std::unordered_map<uint64_t, std::shared_ptr<Vec2<uint32_t>>> vertices;
+	std::vector<Circuit> polygons;
+
+	for (uint32_t edgeIdx = 0; edgeIdx < edges.size(); ++edgeIdx) {
+		if (usedEdge[edgeIdx]) { continue; }
+
+		const HalfEdge& startEdge = edges[edgeIdx];
+		const uint64_t startEdgeKey = MakeEdgeKey(startEdge.from.x, startEdge.from.y);
+		const uint32_t regionID = startEdge.regionID;
+
+		std::vector<std::weak_ptr<Vec2<uint32_t>>> currPolygonVerts;
+		uint32_t currEdge = edgeIdx;
+		GridDirection prevDir = GetEdgeDirection(edges[currEdge]);
+
+		// Begin stepping through the edges until we close it.
+		while (true) {
+			usedEdge[currEdge] = true;
+
+			const HalfEdge& e = edges[currEdge];
+
+			uint64_t key = MakeEdgeKey(e.from.x, e.from.y);
+			auto& v = vertexManager[key];
+			if (!v) {
+				v = std::make_shared<Vec2<uint32_t>>(Vec2<uint32_t>(e.from.x, e.from.y));
+				vertexManager[key] = v;
+			}
+
+			currPolygonVerts.push_back(v);
+
+			uint64_t nextEdgeKey = MakeEdgeKey(e.to.x, e.to.y);
+			if (nextEdgeKey == startEdgeKey) {
+				break;
+			}
+
+			std::vector<uint32_t> edgeCandidates = outgoingEdges[nextEdgeKey];
+
+			currEdge = ChooseNextEdge(edges, edgeCandidates, regionID, prevDir, usedEdge);
+			prevDir = GetEdgeDirection(edges[currEdge]);
+		}
+
+
+		polygons.push_back(Circuit(currPolygonVerts, regionID));
+	}
+
+	return polygons;
+}
+
+
+
+uint64_t PerpendicularDistanceSquared(const Vec2<uint32_t>& v, const Vec2<uint32_t>& start, const Vec2<uint32_t>& end) {
+	int64_t dx = static_cast<int64_t>(end.x) - static_cast<int64_t>(start.x);
+	int64_t dy = static_cast<int64_t>(end.y) - static_cast<int64_t>(start.y);
+
+	if (dx == 0 && dy == 0) {
+		// start == end, which is a degenerate case asn it means they are the same point.
+		int64_t ddx = static_cast<int64_t>(v.x) - static_cast<int64_t>(start.x);
+		int64_t ddy = static_cast<int64_t>(v.y) - static_cast<int64_t>(start.y);
+
+		return (ddx * ddx) + (ddy * ddy);
+	}
+
+	//Vec2<int> diff = v - start;
+
+	// cross product squared
+	int64_t num = std::abs(dy * (static_cast<int64_t>(v.x) - static_cast<int64_t>(start.x)) - dx * (static_cast<int64_t>(v.y) - static_cast<int64_t>(start.y)));
+	return static_cast<uint64_t>(num * num / (dx * dx + dy * dy));
+}
+
+// Ramer-Douglas-Peucker polygon simplification
+void RDPSimplifyPolygon(const std::vector<std::shared_ptr<Vec2<uint32_t>>>& vertices, uint32_t start, uint32_t end, uint64_t epsilonSquared, std::vector<bool>& keep) {
+	if (end <= start + 1) { return; }
+
+	uint64_t maxDist = 0;
+	uint32_t idx = start;
+
+	for (uint32_t i = start + 1; i < end; ++i) {
+		uint64_t d = PerpendicularDistanceSquared(*vertices[i], *vertices[start], *vertices[end]);
+		if (d > maxDist) {
+			idx = i;
+			maxDist = d;
+		}
+	}
+
+	if (maxDist > epsilonSquared) {
+		keep[idx] = true;
+
+		// recursive call to keep simplifying.
+		RDPSimplifyPolygon(vertices, start, idx, epsilonSquared, keep);
+		RDPSimplifyPolygon(vertices, idx, end, epsilonSquared, keep);
+	}
+}
+
+std::vector<std::weak_ptr<Vec2<uint32_t>>> SimplifyCircuit(std::unordered_map<uint64_t, std::shared_ptr<Vec2<uint32_t>>>& vertexManager, std::vector<std::weak_ptr<Vec2<uint32_t>>>& vertices, uint32_t epsilon) {
+	std::vector<std::shared_ptr<Vec2<uint32_t>>> lockedVertices;
 	
-	// Walk edge CCW.
+	for (std::weak_ptr<Vec2<uint32_t>>& w : vertices) {
+		// Check if any of our other simplifications have removed the reference to the vertex we are holding
+		if (std::shared_ptr<Vec2<uint32_t>> s = w.lock()) {
+			// If not, then it means this vertex wasn't simplified away, and we can use it for simplifying our new circuit.
+			lockedVertices.push_back(s);
+		}
+	}
 
-	*/
+	std::vector<std::weak_ptr<Vec2<uint32_t>>> finalVertices;
+	
+	if (lockedVertices.size() <= 2) {
+		for (auto& s : lockedVertices) {
+			finalVertices.push_back(s);
+		}
 
+		return finalVertices;
+	}
 
+	uint32_t first = 0;
+	uint32_t last = lockedVertices.size() - 1;
+
+	std::vector<bool> keep(lockedVertices.size(), false);
+	keep[first] = true;
+	keep[last] = true;
+
+	uint64_t epsilonSquared = static_cast<uint64_t>(epsilon) * epsilon;
+
+	RDPSimplifyPolygon(lockedVertices, first, last, epsilonSquared, keep);
+
+	std::vector<std::weak_ptr<Vec2<uint32_t>>> simplified;
+	for (size_t i = 0; i < lockedVertices.size(); ++i) {
+		if (keep[i]) {
+			simplified.push_back(lockedVertices[i]);
+			continue;
+		}
+
+		// If we reach here, the vertex was simplified, and as such, we should tell our master shared_ptr vertex manager, that it should remove it's reference so once this function exits, 
+		// all weak ptrs will also be removed.
+		vertexManager.erase(MakeEdgeKey(lockedVertices[i]->x, lockedVertices[i]->y));
+	}
+	return simplified;
 }
 
-void SimplifyPolygons() {
+std::vector<Circuit> SimplifyPolygons(std::unordered_map<uint64_t, std::shared_ptr<Vec2<uint32_t>>>& vertexManager, std::vector<Circuit> circuits, uint32_t epsilon = 1) {
+	std::vector<Circuit> simplifiedCircuits;
 
+	for (Circuit& c : circuits) {
+		c.vertices = SimplifyCircuit(vertexManager, c.vertices, epsilon);
+	}
+
+	return simplifiedCircuits;
 }
+
+struct Poly {
+	std::vector<std::shared_ptr<Vec2<uint32_t>>> outerVertices;
+	std::vector<std::shared_ptr<Vec2<uint32_t>>> holeVertices;
+	uint32_t regionID;
+	float area;
+};
+
+float SignedArea(const std::vector<std::shared_ptr<Vec2<uint32_t>>>& circuit) {
+	float a = 0.0f;
+
+	for (size_t idx = 0, prevIdx = circuit.size() - 1; idx < circuit.size(); prevIdx = idx++) {
+		a += static_cast<float>(circuit[prevIdx]->x + circuit[idx]->x) * (circuit[prevIdx]->y - circuit[idx]->y);
+	}
+
+	return a * 0.5f;
+}
+
+std::vector<Poly> EmbedPolyHoles(std::vector<Circuit> circuits, uint64_t totalImageArea) {
+	std::vector<Poly> embeddedPolygons;
+	std::vector<Poly> holes;
+
+	// we want to make sure the hole is at least 4 pixels (or whatever that percentage becomes), which means the hole isn't just random noise/static.
+	const float minimumHoleSize = std::max<float>(totalImageArea * 0.00005f, 4); // 0.005%
+
+	for (Circuit& c : circuits) {
+		// At this point we can turn the weak pointers into simply shared pointers, as the only movement we might do is move a hole position, no more deletion, so we should be safe.
+		std::vector<std::shared_ptr<Vec2<uint32_t>>> lockedVertices;
+		for (auto& w : c.vertices) {
+			if (std::shared_ptr<Vec2<uint32_t>> s = w.lock()) {
+				// If not, then it means this vertex wasn't simplified away, and we can use it for simplifying our new circuit.
+				lockedVertices.push_back(s);
+			}
+		}
+
+		float area = SignedArea(lockedVertices);
+
+		if (area < 0) {
+			// This must mean the circuit is a hole to another polygon, with this, we also want to remove if they are too small, as that simply is noise.
+			if (std::abs(area) < minimumHoleSize) {
+				continue;
+			}
+
+			Poly hole;
+			hole.outerVertices = lockedVertices;
+			hole.regionID = c.regionID;
+			hole.area = area;
+			holes.push_back(hole);
+		}
+
+		Poly p;
+		p.outerVertices = lockedVertices;
+		p.regionID = c.regionID;
+		p.area = area;
+		embeddedPolygons.push_back(p);
+	}
+
+	// Now that we know which circuits are holes within another, we can simply go through each, and add them into whichever polygon they reside.
+	// We will make this work for holes within a polygon that is a hole of another polygon, but looping through all circuits, and choosing the one we match with, that contains the lowest total area.
+	for (Poly& c : holes) {
+		// check the smallest area polygon that contains it, as we could technically have holes within holes. (or technically speaking poly's inside of poly's inside of poly's but whatever)
+		float largestArea = -1.f;
+		uint32_t polyIdx;
+		
+		for (Poly& p : embeddedPolygons) {
+			// Do the simple point in the poly for each polyogn to find the smallest area polygon we are inside,
+
+
+
+		}
+
+		// then if we found a home, we should also ensure we keep the hole inside of the polygon, as we simplified which could push the vertices out of it
+
+	}
+
+	return embeddedPolygons;
+}
+
 
 void TriangulatePolygons() {
 
@@ -1194,8 +1513,14 @@ Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 
 	// WE will process each pixel for it's id, and check each up/down, left/right pixel to see if we are the same colour id, if not then it must be a part of a border segment
 	// that we keep track of with an edge struct. We can then later use that to combine and create the 
-	auto edges = FindRegionContours(quantizedT);
-	//ChainEdgesToPolygons(edges);
+	std::vector<HalfEdge> edges = FindRegionContours(quantizedT);
+	std::unordered_map<uint64_t, std::vector<uint32_t>> outgoingEdges = BuildAdjacencyMap(edges);
+	std::unordered_map<uint64_t, std::shared_ptr<Vec2<uint32_t>>> vertexManager;
+	std::vector<Circuit> circuitPolygons = ChainEdgesToPolygons(edges, outgoingEdges, vertexManager);
+	std::vector<Circuit> simplifiedCircuits = SimplifyPolygons(vertexManager, circuitPolygons, 1);
+	std::vector<Poly> polygons = EmbedPolyHoles(simplifiedCircuits, quantizedT.height * quantizedT.width);
+
+	int abc = 123;
 
 
 			// Then we will turn our boundaries into continuous contours via contour tracing (Moore-neighbour tracing) or (Suzuki Abe)
@@ -1223,6 +1548,6 @@ Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 	// May also want to look into triplanar mapping for my scenarios.
 
 	//return kuwaharaT;
-	//return quantizedT;
-	return edges;
+	return quantizedT;
+	//return edges;
 }

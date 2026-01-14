@@ -114,9 +114,9 @@ void Init()
 	//bunny = ObjectLoader::Load("./data/Models/Bunny/stanford-bunny.obj");
 	//bunny.Translate(0, 0, -2);
 	fox = ObjectLoader::Load("./data/Models/Fox/low-poly-fox.obj");
-	fox.Translate(0, 15, -25);
+	fox.Translate(0, 0.25, -1);
 	fox.Rotate(180, 90, 0);
-	fox.Scale(0.25);
+	fox.Scale(0.025);
 
 	//TriangleNode::MAX_DEPTH = 15;
 
@@ -340,7 +340,7 @@ void Render()
 	/* MAIN PIPELINE */
 	//p.Render(bunnyVerts, bunnyIndices, ma);
 	//p.Render(foxVerts, foxIndices, ma);
-	/* TESSELLATED PIPELINE */
+	/* TESSELLATED PIPELINE */ // Don't forget I need to share cameras.
 	//p.Render(fox.GetMeshes(), fox.GetModelMatrix(), fox.GetAdjacencyTable());
 	p.Render(quadMeshes, q.GetModelMatrix(), quadEdges);
 	// DONE!!!
