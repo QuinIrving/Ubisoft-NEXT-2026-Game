@@ -338,10 +338,10 @@ namespace {
 				//rotatedOffset.y /= scaleY;
 				//float weight = std::exp(-(rotatedOffset.x * rotatedOffset.x + rotatedOffset.y * rotatedOffset.y) / (2.f * sigma * sigma));
 				//float weight = GetAnisotropicGaussianWeight(pixelOffset.x, pixelOffset.y, sigmaX, sigmaY);
-				//float weight = GetGaussianWeight(pixelOffset.GetMagnitude(), sigma);
+				float weight = GetGaussianWeight(pixelOffset.GetMagnitude(), sigma);
 
 				// Polynomial way (faster):
-				float weight = GetPolynomialWeight(pixelOffset.x, pixelOffset.y, eta, lambda);
+				//float weight = GetPolynomialWeight(pixelOffset.x, pixelOffset.y, eta, lambda);
 
 				colourSum += rgb * weight;
 				colourSumSquared += rgb * rgb * weight;
@@ -1555,24 +1555,24 @@ struct Tri {
 };
 
 // CCW: > 0, CW: < 0, Collinear (on line): 0
-double EdgeOrientation(const Vec2<double>& lineA, const Vec2<double>& lineB, const Vec2<double>& point) {
+double EdgeOrientation(const Vec2<long double>& lineA, const Vec2<long double>& lineB, const Vec2<long double>& point) {
 	return (lineB.x - lineA.x) * (point.y - lineA.y) - (point.x - lineA.x) * (lineB.y - lineA.y);
 }
 
 
-bool IsCCW(const Vec2<double>& a, const Vec2<double>& b, const Vec2<double>& c) {
+bool IsCCW(const Vec2<long double>& a, const Vec2<long double>& b, const Vec2<long double>& c) {
 	return EdgeOrientation(a, b, c) > 0.f;
 }
 
 
 // 1 If the point is to the right of the segment, 0 if the point is to the left of the segment 
-int PointDirectionFromLineSegment(const Vec2<double>& lineA, const Vec2<double>& lineB, const Vec2<double>& point) {
+int PointDirectionFromLineSegment(const Vec2<long double>& lineA, const Vec2<long double>& lineB, const Vec2<long double>& point) {
 	//float dir = (lineA - lineB).CrossProduct(lineA - point);
 	double dir = EdgeOrientation(lineA, lineB, point);
 	return (dir < -EPSILON) ? 1 : 0;
 }
 
-bool DoLineSegmentsIntersect(const Vec2<double>& a1, const Vec2<double>& b1, const Vec2<double>& a2, const Vec2<double>& b2) {
+bool DoLineSegmentsIntersect(const Vec2<long double>& a1, const Vec2<long double>& b1, const Vec2<long double>& a2, const Vec2<long double>& b2) {
 	double orientation1 = EdgeOrientation(a1, b1, a2);
 	double orientation2 = EdgeOrientation(a1, b1, b2);
 	double orientation3 = EdgeOrientation(a2, b2, a1);
@@ -1609,25 +1609,25 @@ bool DoLineSegmentsIntersect(const Vec2<double>& a1, const Vec2<double>& b1, con
 }
 
 // CCW triangles.
-bool PointInCircle(const Vec2<double>& triA, const Vec2<double>& triB, const Vec2<double>& triC, const Vec2<double> point) {
+bool PointInCircle(const Vec2<long double>& triA, const Vec2<long double>& triB, const Vec2<long double>& triC, const Vec2<long double> point) {
 	// translate our triangle poionts, so testpoint is at the origin
-	Vec2<double> newA = triA - point;
-	Vec2<double> newB = triB - point;
-	Vec2<double> newC = triC - point;
+	Vec2<long double> newA = triA - point;
+	Vec2<long double> newB = triB - point;
+	Vec2<long double> newC = triC - point;
 
 	// Oriented area (2x) of sub-triangles)
-	double areaAB = newA.CrossProduct(newB);
-	double areaBC = newB.CrossProduct(newC);
-	double areaCA = newC.CrossProduct(newA);
+	long double areaAB = newA.CrossProduct(newB);
+	long double areaBC = newB.CrossProduct(newC);
+	long double areaCA = newC.CrossProduct(newA);
 
-	double determinant = (newA.GetMagnitudeSquared() * areaBC) + (newB.GetMagnitudeSquared() * areaCA) + (newC.GetMagnitudeSquared() * areaAB);
+	long double determinant = (newA.GetMagnitudeSquared() * areaBC) + (newB.GetMagnitudeSquared() * areaCA) + (newC.GetMagnitudeSquared() * areaAB);
 	return determinant > EPSILON;
 }
 
 
 
 
-int FindTriangleContainingPoint(std::vector<Tri>& tris, std::vector<Vec2<double>>& allPoints, int pointIdx, int startTri) {
+int FindTriangleContainingPoint(std::vector<Tri>& tris, std::vector<Vec2<long long>>& allPoints, int pointIdx, int startTri) {
 	int curr = startTri;
 
 	while (true) {
@@ -1637,7 +1637,9 @@ int FindTriangleContainingPoint(std::vector<Tri>& tris, std::vector<Vec2<double>
 			int v0 = tris[curr].vIndices[e];
 			int v1 = tris[curr].vIndices[(e + 1) % 3];
 
-			double ori = EdgeOrientation(allPoints[v0], allPoints[v1], allPoints[pointIdx]);
+			long double ori = EdgeOrientation({ static_cast<long double>(allPoints[v0].x), static_cast<long double>(allPoints[v0].y) },
+				{ static_cast<long double>(allPoints[v1].x), static_cast<long double>(allPoints[v1].y) }, 
+				{ static_cast<long double>(allPoints[pointIdx].x), static_cast<long double>(allPoints[pointIdx].y) });
 			if (ori < -EPSILON) { // Outside, cross to neighbour.
 				int neighbour = tris[curr].adjIndices[(e + 2) % 3];
 
@@ -1713,6 +1715,7 @@ int InsertPoint(int triIdx, int pIdx, std::vector<Tri>& tris, std::vector<Vec2<f
 	return t0;
 }*/
 
+/*
 void LegalizeTriangles(std::vector<Tri>& tris, std::vector<Vec2<double>>& points, std::stack<std::pair<int, int>>& stack) {
 	while (!stack.empty()) {
 		auto [triIdx, oppEdge] = stack.top();
@@ -1765,21 +1768,22 @@ void LegalizeTriangles(std::vector<Tri>& tris, std::vector<Vec2<double>>& points
 			// Rewire *all* 4 adjs around quad (old neigh's other adjs -> new).
 			// Push new dirty edges (the flipped ones opp new diagonal).
 			// Mark old tri/neigh invalid (or swap contents + resize vector later).
-		}*/
+		}* /
 	}
-}
+}*/
 
 
 
 // -4: point on edge 2, -3: point on edge 1, -2: point on edge 0, -1: point in triangle, 0-2: the specific adjIndex edge that we should move towards.
-int FindNextTriangleMove(const std::vector<Vec2<double>>& allPoints, const Tri& triangle, const Vec2<double>& point) {
+int FindNextTriangleMove(const std::vector<Vec2<long long>>& allPoints, const Tri& triangle, const Vec2<long double>& point) {
 	// Since our edge[i] is the edge adjacent to vertex[i], let's find each vertices adjacent edge orientation.
 
 	int edgeIdx = -1;
 
 	// we can do a loop, and the second we find a CW edge, that must be the edge direction we should go
 	for (int i = 0; i < 3; ++i) {
-		double orientation = EdgeOrientation(allPoints[triangle.vIndices[(i + 1) % 3]], allPoints[triangle.vIndices[(i + 2) % 3]], point);
+		long double orientation = EdgeOrientation({ static_cast<long double>(allPoints[triangle.vIndices[(i + 1) % 3]].x), static_cast<long double>(allPoints[triangle.vIndices[(i + 1) % 3]].y) },
+			{static_cast<long double>(allPoints[triangle.vIndices[(i + 2) % 3]].x), static_cast<long double>(allPoints[triangle.vIndices[(i + 2) % 3]].y)}, point);
 		/*OutputDebugString(("(" + std::to_string(allPoints[triangle.vIndices[(i + 1) % 3]].x) + ", " + std::to_string(allPoints[triangle.vIndices[(i + 1) % 3]].y) + ")").c_str());
 		OutputDebugString((" (" + std::to_string(allPoints[triangle.vIndices[(i + 2) % 3]].x) + ", " + std::to_string(allPoints[triangle.vIndices[(i + 2) % 3]].y) + ")").c_str());
 		OutputDebugString((" Point: (" + std::to_string(point.x) + ", " + std::to_string(point.y) + ")").c_str());
@@ -1793,7 +1797,7 @@ int FindNextTriangleMove(const std::vector<Vec2<double>>& allPoints, const Tri& 
 		}
 
 		// If it's within this threshold, then the point is on this edge line within the current triangle
-		if (std::abs(orientation) == 0) {
+		if (std::abs(orientation) < EPSILON) {
 			// Check if it's within the line segment itself
 			auto& v1 = allPoints[triangle.vIndices[(i + 1) % 3]];
 			auto& v2 = allPoints[triangle.vIndices[(i + 2) % 3]];
@@ -1814,7 +1818,7 @@ int FindNextTriangleMove(const std::vector<Vec2<double>>& allPoints, const Tri& 
 }
 
 
-void TriangulateInTriangle(std::stack<int>& dirtyTriangles, std::vector<Tri>& triangles, Tri& parent, int parentIdx, uint64_t pointIdx, std::vector<Vec2<double>>& allPoints) {
+void TriangulateInTriangle(std::stack<int>& dirtyTriangles, std::vector<Tri>& triangles, Tri& parent, int parentIdx, uint64_t pointIdx, std::vector<Vec2<long long>>& allPoints) {
 	// The idea here, is we know the point is within the parent, we only care about connecting these new vertex indices, as the position remains stable.
 	// Float will be used later when we need to handle the dirty stack, to check actual if adjacent point is within circle made by new triangle
 	int v0 = parent.vIndices[0];
@@ -1871,17 +1875,32 @@ void TriangulateInTriangle(std::stack<int>& dirtyTriangles, std::vector<Tri>& tr
 		}
 	}
 
-	if (!IsCCW(allPoints[parent.vIndices[0]], allPoints[parent.vIndices[1]], allPoints[parent.vIndices[2]])) {
+	if (!IsCCW({ static_cast<long double>(allPoints[parent.vIndices[0]].x), static_cast<long double>(allPoints[parent.vIndices[0]].y) },
+		{ static_cast<long double>(allPoints[parent.vIndices[1]].x), static_cast<long double>(allPoints[parent.vIndices[1]].y) }, 
+		{ static_cast<long double>(allPoints[parent.vIndices[2]].x),  static_cast<long double>(allPoints[parent.vIndices[2]].y) })) {
 		throw std::runtime_error("We didn't maintain CCW triangles.");
 	}
 
+	if (!IsCCW({ static_cast<long double>(allPoints[t1.vIndices[0]].x), static_cast<long double>(allPoints[t1.vIndices[0]].y) },
+		{ static_cast<long double>(allPoints[t1.vIndices[1]].x), static_cast<long double>(allPoints[t1.vIndices[1]].y) },
+		{ static_cast<long double>(allPoints[t1.vIndices[2]].x),  static_cast<long double>(allPoints[t1.vIndices[2]].y) })) {
+		throw std::runtime_error("We didn't maintain CCW triangles.");
+	}
+
+	if (!IsCCW({ static_cast<long double>(allPoints[t2.vIndices[0]].x), static_cast<long double>(allPoints[t2.vIndices[0]].y) },
+		{ static_cast<long double>(allPoints[t2.vIndices[1]].x), static_cast<long double>(allPoints[t2.vIndices[1]].y) },
+		{ static_cast<long double>(allPoints[t2.vIndices[2]].x),  static_cast<long double>(allPoints[t2.vIndices[2]].y) })) {
+		throw std::runtime_error("We didn't maintain CCW triangles.");
+	}
+
+	/*
 	if (!IsCCW(allPoints[t1.vIndices[0]], allPoints[t1.vIndices[1]], allPoints[t1.vIndices[2]])) {
 		throw std::runtime_error("We didn't maintain CCW triangles.");
 	}
 
 	if (!IsCCW(allPoints[t2.vIndices[0]], allPoints[t2.vIndices[1]], allPoints[t2.vIndices[2]])) {
 		throw std::runtime_error("We didn't maintain CCW triangles.");
-	}
+	}*/
 
 	
 
@@ -1901,7 +1920,7 @@ void TriangulateInTriangle(std::stack<int>& dirtyTriangles, std::vector<Tri>& tr
 	dirtyTriangles.push(t2Idx);
 }
 
-void TriangulateOnEdge(std::stack<int>& dirtyTriangles, std::vector<Tri>& triangles, int parentIdx, int edgeIdx, uint64_t pointIdx, std::vector<Vec2<double>>& allPoints) {
+void TriangulateOnEdge(std::stack<int>& dirtyTriangles, std::vector<Tri>& triangles, int parentIdx, int edgeIdx, uint64_t pointIdx, std::vector<Vec2<long long>>& allPoints) {
 	// In this scenario the point lies on the edge between the neighbour and the parent tris.
 	// So we will update them to make 4 triangles instead of 3.
 	Tri& parent = triangles[parentIdx];
@@ -1980,19 +1999,36 @@ void TriangulateOnEdge(std::stack<int>& dirtyTriangles, std::vector<Tri>& triang
 		}
 	}
 
+	/*
 	if (!IsCCW(allPoints[parent.vIndices[0]], allPoints[parent.vIndices[1]], allPoints[parent.vIndices[2]])) {
 		throw std::runtime_error("We didn't maintain CCW triangles.");
 	}
 
 	if (!IsCCW(allPoints[neighbour.vIndices[0]], allPoints[neighbour.vIndices[1]], allPoints[neighbour.vIndices[2]])) {
 		throw std::runtime_error("We didn't maintain CCW triangles.");
-	}
+	}*/
 
-	if (!IsCCW(allPoints[t1.vIndices[0]], allPoints[t1.vIndices[1]], allPoints[t1.vIndices[2]])) {
+	if (!IsCCW({ static_cast<long double>(allPoints[parent.vIndices[0]].x), static_cast<long double>(allPoints[parent.vIndices[0]].y) },
+		{ static_cast<long double>(allPoints[parent.vIndices[1]].x), static_cast<long double>(allPoints[parent.vIndices[1]].y) },
+		{ static_cast<long double>(allPoints[parent.vIndices[2]].x),  static_cast<long double>(allPoints[parent.vIndices[2]].y) })) {
 		throw std::runtime_error("We didn't maintain CCW triangles.");
 	}
 
-	if (!IsCCW(allPoints[t2.vIndices[0]], allPoints[t2.vIndices[1]], allPoints[t2.vIndices[2]])) {
+	if (!IsCCW({ static_cast<long double>(allPoints[neighbour.vIndices[0]].x), static_cast<long double>(allPoints[neighbour.vIndices[0]].y) },
+		{ static_cast<long double>(allPoints[neighbour.vIndices[1]].x), static_cast<long double>(allPoints[neighbour.vIndices[1]].y) },
+		{ static_cast<long double>(allPoints[neighbour.vIndices[2]].x),  static_cast<long double>(allPoints[neighbour.vIndices[2]].y) })) {
+		throw std::runtime_error("We didn't maintain CCW triangles.");
+	}
+
+	if (!IsCCW({ static_cast<long double>(allPoints[t1.vIndices[0]].x), static_cast<long double>(allPoints[t1.vIndices[0]].y) },
+		{ static_cast<long double>(allPoints[t1.vIndices[1]].x), static_cast<long double>(allPoints[t1.vIndices[1]].y) },
+		{ static_cast<long double>(allPoints[t1.vIndices[2]].x),  static_cast<long double>(allPoints[t1.vIndices[2]].y) })) {
+		throw std::runtime_error("We didn't maintain CCW triangles.");
+	}
+
+	if (!IsCCW({ static_cast<long double>(allPoints[t2.vIndices[0]].x), static_cast<long double>(allPoints[t2.vIndices[0]].y) },
+		{ static_cast<long double>(allPoints[t2.vIndices[1]].x), static_cast<long double>(allPoints[t2.vIndices[1]].y) },
+		{ static_cast<long double>(allPoints[t2.vIndices[2]].x),  static_cast<long double>(allPoints[t2.vIndices[2]].y) })) {
 		throw std::runtime_error("We didn't maintain CCW triangles.");
 	}
 
@@ -2005,7 +2041,8 @@ void TriangulateOnEdge(std::stack<int>& dirtyTriangles, std::vector<Tri>& triang
 	dirtyTriangles.push(t2Idx);
 }
 
-std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
+
+std::vector<TextureLoader::UVTri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
 	// we simply want to CDT all of our polygon vertices (perhaps with us also adding in a point towards the center of each polygon for additional detail if it doesn't work all that well
 	// finally, when we triangulate, we will then divide the final positions by the image height and width to get proper UV coords for our quad
 	// we are also constraining CDT to have constraint edges along the borders of the quad (0,0),  (1,0), (1,1), (0, 1)... we want to include proper edges for if there are certian points on the
@@ -2019,7 +2056,7 @@ std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
 	// First, let's begin by unboxing our vertices in our polygons, move them into the correcr 0->1 (relative to only 1 either width or height whichever is larger) float range, and 
 	// keep track of the constraint edges we want (can also add in corner points at this point if need be, as well as finish up adding border constraints.
 	std::vector<Vec2<uint32_t>> allPointsOriginal;
-	std::vector<Vec2<double>> allPoints;
+	std::vector<Vec2<long long>> allPoints;
 	std::vector<Vec2<uint64_t>> allConstraintEdges;
 	//std::vector<Vec2<int>> cornerPointsToAdd = { {0, 0}, {0, t.height}, {t.width, 0 }, {t.width, t.height} }; // If we find one of these when unboxing our points, we can remove it as it is there
 	//std::unordered_set<uint64_t> isVertexAdded; // Since we share pointers of vertices, we don't want duplicate points in our triangulation as it will break it;
@@ -2049,7 +2086,8 @@ std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
 
 			// If the vertex is not already added to the "point cloud" array, then add it in
 			if (vertexIdx.find(vKey) == vertexIdx.end()) {
-				allPoints.push_back(Vec2<double>(std::min<double>(v->x * invLargestScale, 1.), std::min<double>(v->y * invLargestScale, 1.)));
+				//allPoints.push_back(Vec2<double>(std::min<double>(v->x * invLargestScale, 1.), std::min<double>(v->y * invLargestScale, 1.)));
+				allPoints.push_back(Vec2<long long>(v->x, v->y));
 				allPointsOriginal.push_back({ v->x, v->y });
 				vertexIdx[vKey] = allPoints.size() - 1; // as we just pushed it in.
 			}
@@ -2107,25 +2145,25 @@ std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
 	// Finally, add in the missing corner points, and add in the necessary edges to the border
 	if (vertexIdx.find(MakeEdgeKey(0, 0)) == vertexIdx.end()) {
 		vertexIdx[MakeEdgeKey(0, 0)] = allPoints.size();
-		allPoints.push_back({ 0., 0. });
+		allPoints.push_back({ 0, 0 });
 		allPointsOriginal.push_back({ 0, 0});
 	}
 
 	if (vertexIdx.find(MakeEdgeKey(0, t.height)) == vertexIdx.end()) {
 		vertexIdx[MakeEdgeKey(0, t.height)] = allPoints.size();
-		allPoints.push_back({ 0., std::min<double>(t.height * invLargestScale, 1.) });
+		allPoints.push_back({ 0, t.height});
 		allPointsOriginal.push_back({ 0, static_cast<uint32_t>(t.height)});
 	}
 
 	if (vertexIdx.find(MakeEdgeKey(t.width, 0)) == vertexIdx.end()) {
 		vertexIdx[MakeEdgeKey(t.width, 0)] = allPoints.size();
-		allPoints.push_back({ std::min<double>(t.width * invLargestScale, 1.), 0. });
+		allPoints.push_back({t.width, 0});
 		allPointsOriginal.push_back({ static_cast<uint32_t>(t.width), 0 });
 	}
 
 	if (vertexIdx.find(MakeEdgeKey(t.width, t.height)) == vertexIdx.end()) {
 		vertexIdx[MakeEdgeKey(t.width, t.height)] = allPoints.size();
-		allPoints.push_back({ std::min<double>(t.width * invLargestScale, 1.), std::min<double>(t.height * invLargestScale, 1.) });
+		allPoints.push_back({t.width, t.height });
 		allPointsOriginal.push_back({ static_cast<uint32_t>(t.width), static_cast<uint32_t>(t.height) });
 	}
 
@@ -2292,15 +2330,17 @@ std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
 	//std::vector<Tri> badTriangles;
 	// lets add in our super triangle points.
 	int numRealPoints = allPoints.size();
-	if (IsCCW({ -100., -100. }, { 100., -100. }, { 0., 100. })) {
-		allPoints.push_back({ -100., -100. }); // Super Triangle Vert 0
-		allPoints.push_back({ 100., -100. }); // Super Triangle Vert 1
-		allPoints.push_back({ 0., 100. }); // Super Triangle Vert 2
+
+	if (IsCCW({ static_cast<long double>(-t.width), static_cast<long double>(-t.height)}, { static_cast<long double>(3 * t.width), static_cast<long double>(-t.height)},
+		{ static_cast<long double>(-t.width), static_cast<long double>((3 * t.height) + 1)})) {
+		allPoints.push_back({ -t.width, -t.height }); // Super Triangle Vert 0
+		allPoints.push_back({ 3 * t.width, -t.height }); // Super Triangle Vert 1
+		allPoints.push_back({ -t.width, (3 * t.height) + 1 }); // Super Triangle Vert 2
 	}
 	else {
-		allPoints.push_back({ -100., -100. }); // Super Triangle Vert 0
-		allPoints.push_back({ 0., 100. }); // Super Triangle Vert 1
-		allPoints.push_back({ 100., -100. }); // Super Triangle Vert 2
+		allPoints.push_back({ -t.width, -t.height }); // Super Triangle Vert 0
+		allPoints.push_back({ -t.width, (3 * t.height) + 1 }); // Super Triangle Vert 1
+		allPoints.push_back({ 3 * t.width, -t.height }); // Super Triangle Vert 2
 	}
 
 	int super0 = numRealPoints;
@@ -2340,7 +2380,7 @@ std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
 		while (moveIdx >= 0) {
 			//moveIdx = FindNextTriangleMove(allPoints, currTri, p);
 			Tri& currTri = triangles[currTriIdx];
-			moveIdx = FindNextTriangleMove(allPoints, currTri, p);
+			moveIdx = FindNextTriangleMove(allPoints, currTri, { static_cast<long double>(p.x), static_cast<long double>(p.y)});
 			//OutputDebugString("moveIdx: ");
 			//OutputDebugString(std::to_string(moveIdx).c_str());
 			//OutputDebugString("\n");
@@ -2417,7 +2457,10 @@ std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
 			int pOpp = adjTri.vIndices[pointToCheckIdx];
 
 			// Check if this point is within our triangle points circle, if not then continue,
-			if (!PointInCircle(allPoints[pNew], allPoints[pLeft], allPoints[pRight], allPoints[pOpp])) {
+			if (!PointInCircle({ static_cast<long double>(allPoints[pNew].x), static_cast<long double>(allPoints[pNew].y) }, 
+				{ static_cast<long double>(allPoints[pLeft].x), static_cast<long double>(allPoints[pLeft].y) },
+				{ static_cast<long double>(allPoints[pRight].x), static_cast<long double>(allPoints[pRight].y) }, 
+				{ static_cast<long double>(allPoints[pOpp].x), static_cast<long double>(allPoints[pOpp].y) })) {
 				continue;
 			}
 
@@ -2445,11 +2488,15 @@ std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
 			adjTri.adjIndices[1] = dirtyIdx;
 			adjTri.adjIndices[2] = dirtyLeftN;
 
-			if (!IsCCW(allPoints[dirtyTri.vIndices[0]], allPoints[dirtyTri.vIndices[1]], allPoints[dirtyTri.vIndices[2]])) {
+			if (!IsCCW({ static_cast<long double>(allPoints[dirtyTri.vIndices[0]].x), static_cast<long double>(allPoints[dirtyTri.vIndices[0]].y) },
+				{ static_cast<long double>(allPoints[dirtyTri.vIndices[1]].x), static_cast<long double>(allPoints[dirtyTri.vIndices[1]].y) },
+				{ static_cast<long double>(allPoints[dirtyTri.vIndices[2]].x), static_cast<long double>(allPoints[dirtyTri.vIndices[2]].y) })) {
 				throw std::runtime_error("We didn't maintain CCW triangles.");
 			}
 
-			if (!IsCCW(allPoints[adjTri.vIndices[0]], allPoints[adjTri.vIndices[1]], allPoints[adjTri.vIndices[2]])) {
+			if (!IsCCW({ static_cast<long double>(allPoints[adjTri.vIndices[0]].x), static_cast<long double>(allPoints[adjTri.vIndices[0]].y) },
+				{ static_cast<long double>(allPoints[adjTri.vIndices[1]].x), static_cast<long double>(allPoints[adjTri.vIndices[1]].y) },
+				{ static_cast<long double>(allPoints[adjTri.vIndices[2]].x), static_cast<long double>(allPoints[adjTri.vIndices[2]].y) })) {
 				throw std::runtime_error("We didn't maintain CCW triangles.");
 			}
 
@@ -2494,175 +2541,38 @@ std::vector<Tri> TriangulatePolygons(std::vector<Poly> polygons, Texture& t) {
 		
 	}
 
-	return triangles;
+	std::vector<TextureLoader::UVTri> uvTriangles;
+
+	for (Tri& tri : triangles) {
+		int i0 = tri.vIndices[0];
+		int i1 = tri.vIndices[1];
+		int i2 = tri.vIndices[2];
+		if (i0 == super0 || i0 == super1 || i0 == super2 || i1 == super0 || i1 == super1 || i1 == super2 || i2 == super0 || i2 == super1 || i2 == super2) {
+			continue;
+		}
+
+		Vec2<float> v0 = { std::max<float>(allPointsOriginal[i0].x / static_cast<float>(t.width), 0.f), std::min<float>(allPointsOriginal[i0].y / static_cast<float>(t.height), 1.f) };
+		Vec2<float> v1 = { std::max<float>(allPointsOriginal[i1].x / static_cast<float>(t.width), 0.f), std::min<float>(allPointsOriginal[i1].y / static_cast<float>(t.height), 1.f) };
+		Vec2<float> v2 = { std::max<float>(allPointsOriginal[i2].x / static_cast<float>(t.width), 0.f), std::min<float>(allPointsOriginal[i2].y / static_cast<float>(t.height), 1.f) };
+		uvTriangles.push_back({ v0, v1, v2 });
+	}
+
+	return uvTriangles;
 }
-
-
-
-
 
 /*
-* void TriangulateInTriangle(std::stack<int>& dirtyTriangles, std::vector<Tri>& triangles, Tri& parent, int parentIdx, uint64_t pointIdx) {
-	// The idea here, is we know the point is within the parent, we only care about connecting these new vertex indices, as the position remains stable.
-	// Float will be used later when we need to handle the dirty stack, to check actual if adjacent point is within circle made by new triangle
-	int v0 = parent.vIndices[0];
-	int v1 = parent.vIndices[1];
-	int v2 = parent.vIndices[2];
-	int n0 = parent.adjIndices[0]; // Opp of v0 (edge 1-2)
-	int n1 = parent.adjIndices[1]; // Opp of v1 (edge 2-0)
-	int n2 = parent.adjIndices[2]; // Opp of v2 (edge 0-1)
-	
-	int t1Idx = triangles.size();
-	int t2Idx = t1Idx + 1;
+std::vector<UVTri> ObtainUVTriangles(std::vector<Tri>& triangles, Texture& t) {
+	std::vector<UVTri> uvTriangles;
 
-	// re-use our parent indices correctly.
-	parent.vIndices[0] = pointIdx;
-	parent.vIndices[1] = v1;//parent.vIndices[0];
-	parent.vIndices[2] = v2;//parent.vIndices[1];
-	
-	parent.adjIndices[0] = n0;//parent.adjIndices[2];
-	parent.adjIndices[1] = t1Idx;//t2Idx;
-	parent.adjIndices[2] = t2Idx;//t1Idx;
-
-
-	Tri t1 = Tri(pointIdx, v2, v0);
-	t1.adjIndices[0] = n1;// The edge adjacent to our new point, is the edge adjacent to the point not part of the shared edge.
-	t1.adjIndices[1] = t2Idx;//parentIdx;
-	t1.adjIndices[2] = parentIdx;//t2Idx;
-
-	Tri t2 = Tri(pointIdx, v0, v1);
-	t2.adjIndices[0] = n2;//parent.adjIndices[0];
-	t2.adjIndices[1] = parentIdx;//t1Idx;
-	t2.adjIndices[2] = t1Idx;//parentIdx;
-	
-	triangles.push_back(t1);
-	triangles.push_back(t2);
-
-	// also update our neighbours at adj[0] to point to the correct triangle now.
-	//int adjIdx = t1.adjIndices[0];
-	if (n1 != -1) {
-		Tri& adj = triangles[n1];
-		for (int i = 0; i < 3; ++i) {
-			// Find where our parent was previously referenced, and update it to the new child.
-			if (adj.adjIndices[i] == parentIdx) {
-				adj.adjIndices[i] = t1Idx;
-				break;
-			}
-		}
+	for (Tri& tri : triangles) {
+		uvTriangles.push_back(tri)
 	}
-
-	if (n2 != -1) {
-		Tri& adj = triangles[n2];
-		for (int i = 0; i < 3; ++i) {
-			// Find where our parent was previously referenced, and update it to the new child.
-			if (adj.adjIndices[i] == parentIdx) {
-				adj.adjIndices[i] = t2Idx;
-				break;
-			}
-		}
-	}
-
-	
-
-	/*OutputDebugString("Parent Idx: ");
-	OutputDebugString(std::to_string(parentIdx).c_str());
-	OutputDebugString(", T1 Idx: ");
-	OutputDebugString(std::to_string(t1Idx).c_str());
-	OutputDebugString(", T2 Idx: ");
-	OutputDebugString(std::to_string(t2Idx).c_str());
-	OutputDebugString("\n");* /
-
-
-	// update our stack to check against our neighbour edge of index 0, to ensure the point is still Delaunay.
-dirtyTriangles.push(parentIdx);
-dirtyTriangles.push(t1Idx);
-dirtyTriangles.push(t2Idx);
-}
-* 
-struct Tri {
-	int vIndices[3];
-	int adjIndices[3]; // we will state for this algorithm, that the adjacent index is the adjacent triangle index to the edge[i] that is opposite of vertex[i]
-	//(so edge that doesn't contain vertex[i])
-	bool isConstrained[3];
-
-	uint32_t regionID;
-
-	Tri(int v0, int v1, int v2, uint32_t regionID) : vIndices{v0, v1, v2}, regionID(regionID), adjIndices{ -1, -1, -1 }, isConstrained{ false, false, false } {};
-};
-
-// CCW: > 0, CW: < 0, Collinear (on line): 0
-float EdgeOrientation(const Vec2<float>& lineA, const Vec2<float>& lineB, const Vec2<float>& point) {
-	return (lineB.x - lineA.x) * (point.y - lineA.y) - (point.x - lineA.x) * (lineB.y - lineA.y);
-}
-
-
-bool IsCCW(const Vec2<float>& a, const Vec2<float>& b, const Vec2<float>& c) {
-	return EdgeOrientation(a, b, c) > 0.f;
-}
-
-
-*/
-/*
-void TriangulateInTriangle(std::stack<Tri&> dirtyTriangles, std::vector<Tri>& triangles, Tri& parent, int& parentIdx, uint64_t& pointIdx) {
-	// The idea here, is we know the point is within the parent, we only care about connecting these new vertex indices, as the position remains stable.
-	// Float will be used later when we need to handle the dirty stack, to check actual if adjacent point is within circle made by new triangle
-	Tri t1 = Tri(pointIdx, parent.vIndices[2], parent.vIndices[0]);
-	t1.adjIndices[0] = parent.adjIndices[1]; // The edge adjacent to our new point, is the edge adjacent to the point not part of the shared edge.
-
-	Tri t2 = Tri(pointIdx, parent.vIndices[1], parent.vIndices[2]);
-	t2.adjIndices[0] = parent.adjIndices[0];
-
-	// re-use our parent indices correctly.
-	parent.vIndices[2] = parent.vIndices[1];
-	parent.vIndices[1] = parent.vIndices[0];
-	parent.vIndices[0] = pointIdx;
-	parent.adjIndices[0] = parent.adjIndices[2];
-
-	int t1Idx = triangles.size();
-	int t2Idx = t1Idx + 1;
-
-	// Set our adjacencies correctly
-	parent.adjIndices[1] = t2Idx;
-	parent.adjIndices[2] = t1Idx;
-
-	t1.adjIndices[1] = parentIdx;
-	t1.adjIndices[2] = t2Idx;
-
-	t2.adjIndices[1] = t1Idx;
-	t2.adjIndices[2] = parentIdx;
-
-	// also update our neighbours at adj[0] to point to the correct triangle now.
-	Tri& adj = triangles[t1.adjIndices[0]];
-	for (int i : adj.vIndices) {
-		// Find where our parent was previously referenced, and update it to the new child.
-		if (i == parentIdx) {
-			adj.adjIndices[i] = t1Idx;
-		}
-	}
-
-	adj = triangles[t2.adjIndices[0]];
-	for (int i : adj.vIndices) {
-		// Find where our parent was previously referenced, and update it to the new child.
-		if (i == parentIdx) {
-			adj.adjIndices[i] = t2Idx;
-		}
-	}
-
-	triangles.push_back(t1);
-	triangles.push_back(t2);
-
-	// update our stack to check against our neighbour edge of index 0, to ensure the point is still Delaunay.
-	dirtyTriangles.push(parent);
-	dirtyTriangles.push(triangles[t1Idx]);
-	dirtyTriangles.push(triangles[t2Idx]);
 }*/
 
 
-
-
-Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
+std::vector<TextureLoader::UVTri> TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 	// First read in the general TGA texture to get the pixel data
-	Texture t = ProcessTGA(texturePath);
+	Texture t = TextureLoader::ProcessTGA(texturePath);
 	// set some value for the texture
 
 	// Now apply the Anisotropic Kuwahara Filter on the texture to try to denoise it (and keep edge lines which are important)
@@ -2694,7 +2604,7 @@ Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 	OutputDebugString(", Total Vertices: ");
 	OutputDebugString(std::to_string(vertsTotal).c_str());
 	OutputDebugString("\n");
-	std::vector<Circuit> simplifiedCircuits = SimplifyPolygons(vertexManager, circuitPolygons, 1);
+	std::vector<Circuit> simplifiedCircuits = SimplifyPolygons(vertexManager, circuitPolygons, 550);
 	vertsTotal = 0;
 	for (Circuit& c : simplifiedCircuits) {
 		vertsTotal += c.vertices.size();
@@ -2714,11 +2624,12 @@ Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 	OutputDebugString(", Total Vertices: ");
 	OutputDebugString(std::to_string(vertsTotal).c_str());
 	OutputDebugString("\n");
-	std::vector<Tri> triangles = TriangulatePolygons(polygons, quantizedT);
+	std::vector<UVTri> triangles = TriangulatePolygons(polygons, quantizedT);
 	OutputDebugString("Triangles: ");
 	OutputDebugString(std::to_string(triangles.size()).c_str());
 	OutputDebugString("\n");
 	int abc = 123;
+	//std::vector<UVTri> uvTriangles = ObtainUVTriangles(triangles, quantizedT);
 
 
 			// Then we will turn our boundaries into continuous contours via contour tracing (Moore-neighbour tracing) or (Suzuki Abe)
@@ -2746,6 +2657,7 @@ Texture TextureLoader::GenerateTextureTopology(std::string& texturePath) {
 	// May also want to look into triplanar mapping for my scenarios.
 
 	//return kuwaharaT;
-	return quantizedT;
+	//return quantizedT;
 	//return edges;
+	return triangles;
 }

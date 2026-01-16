@@ -103,7 +103,7 @@ void Init()
 
 	moveForward = true;
 	q.Translate(0, 0, -2);
-	quadMeshes.push_back(q.GetMesh());
+	//quadMeshes.push_back(q.GetMesh());
 	quadEdges = q.GetAdjacencyTable();
 
 	/*for (int i = 0; i < 1966; ++i) {
@@ -126,8 +126,11 @@ void Init()
 	//std::string t = "./data/Textures/Rock/PavingStonesColor.tga";
 	//std::string t = "./data/Textures/Rock/TilesPatternColor.tga";
 	//std::string t = "./data/Textures/Rock/TilesCheckeredColor.tga";
-	//TextureLoader::textureMap["brickwall"] = TextureLoader::ProcessTGA(t);
-	TextureLoader::textureMap["brickwall"] = TextureLoader::GenerateTextureTopology(t);
+	TextureLoader::textureMap["brickwall"] = TextureLoader::ProcessTGA(t);
+	quadMeshes.push_back(q.GetMesh(TextureLoader::GenerateTextureTopology(t)));
+
+	//TextureLoader::textureMap["brickwall"] = TextureLoader::GenerateTextureTopology(t);
+	
 	quadMeshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
 
 	/*foxVerts = fox.GetMeshes()[0].geometry->processedMesh;

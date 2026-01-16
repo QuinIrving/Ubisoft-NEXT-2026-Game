@@ -99,6 +99,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
+    /*
     start = std::chrono::high_resolution_clock::now();
     TriangleContext context;
     //context.Initialize(viewVerts.size());
@@ -164,7 +165,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
 
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    
+    */
     // Flow should be:
     /*
     Pop from node queue, if wants to split check if neighbour has same longest edge, if so then push itself and neighbour onto stack and set global flag toForceSplit to true.
@@ -189,17 +190,17 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
     int edgeChecks = 0;
     int singleSplits = 0;
     int diamondSplits = 0;*/
-
+    /*
     App::Print(10, 180, ("Camera world pos: (" + std::to_string(camera.GetPosition().x) + ", " + std::to_string(camera.GetPosition().y) + ", " + std::to_string(camera.GetPosition().z) + ")").c_str());
     /*printf("Camera world pos: (%.2f, %.2f, %.2f)\n",
-        cameraPosition.x, cameraPosition.y, cameraPosition.z);*/
+        cameraPosition.x, cameraPosition.y, cameraPosition.z);* /
 
     // Print first vertex in view space:
     Vec3<float> testVertex = { 0.0f, 0.0f, 0.0f }; // World origin
     Vec3<float> testView = testVertex * camera.GetViewMatrix();
     App::Print(10, 140, ("World origin in view space: (" + std::to_string(testView.x) + ", " + std::to_string(testView.y) + ", " + std::to_string(testView.z) + ")").c_str());
     /*printf("World origin in view space: (%.2f, %.2f, %.2f)\n",
-        testView.x, testView.y, testView.z);*/
+        testView.x, testView.y, testView.z);* /
 
     start = std::chrono::high_resolution_clock::now();
     bool forceSplit = false;
@@ -286,7 +287,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
                 context.urgentStack.push_back({ node.neighbours[2], neighbour.baseTriIdx, neighbour.nodeID });
                 forceSplit = true;
                 continue;
-            }*/
+            }* /
 
             // If they don't share the same longest edge, need to keep going down the triangle dependency chain
             context.urgentStack.push_back({ node.neighbours[2], neighbour.baseTriIdx, neighbour.nodeID });
@@ -338,7 +339,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         }
         else {
             shouldSplit = CalculateSSE(node.v0.GetViewPosition(), node.v2.GetViewPosition(), distSq) > (errorThresholdSq * 16.0f);
-        }*/
+        }* /
 
         // node in the nodepool seems to be fine, 
         if (!shouldSplit) {
@@ -393,7 +394,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
     ss << "Split time: " << splitTime.count() / 1e6 << " ms\n";
     ss << "  - Single splits: " << singleSplits << "\n";
     ss << "  - Diamond splits: " << diamondSplits << "\n";
-    ss << "Total: " << (urgentStackTime.count() + workQueueTime.count()) / 1e6 << " ms\n";*/
+    ss << "Total: " << (urgentStackTime.count() + workQueueTime.count()) / 1e6 << " ms\n";* /
 
     OutputDebugString(ss.str().c_str());
 
@@ -469,7 +470,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
                     if (v0.z < -this->f && v1.z < -this->f && v2.z < -this->f) { continue; }
 
                     viewVertsAfterFrustum.insert(viewVertsAfterFrustum.end(), { viewVertsAfterCull[i], viewVertsAfterCull[i + 1], viewVertsAfterCull[i + 2] });
-                }*/
+                }* /
 
     
     // ---- Displacement mapping [TODO] ----
@@ -486,9 +487,9 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
     // We know that each viewvertex also contains the interpolated world position  of the vertex, which should be shared between the two vertices.
     // Let's simply round that value to 8 decimal places and use it for our check of the colours
     //std::unordered_map<int64_t, std::vector<Colour>> colourBlender;
-
+    */
     // ---- Vertex Shading & Lighting [TODO] ----
-    for (TriangleNode& n : context.nodePool) {
+    /*for (TriangleNode& n : context.nodePool) {
         ViewVertex& v0 = n.v0;
         ViewVertex& v1 = n.v1;
         ViewVertex& v2 = n.v2;
@@ -506,7 +507,7 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         v0.SetColour(m.map_Kd->SampleNearest(v0.GetUV()));
         v1.SetColour(m.map_Kd->SampleNearest(v1.GetUV()));
         v2.SetColour(m.map_Kd->SampleNearest(v2.GetUV()));
-        */
+        * /
         ///*
         if (m.map_Kd != NULL) {
 
@@ -537,14 +538,38 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
 
             x = static_cast<uint32_t>(std::floorf(v2.GetWorldPosition().x * 300000 + 1000000000));
             y = static_cast<uint32_t>(std::floorf(v2.GetWorldPosition().y * 300000 + 1000000000));
-            colourBlender[MakeEdgeKey(x, y)].push_back(c2);*/
+            colourBlender[MakeEdgeKey(x, y)].push_back(c2);* /
 
 
             // this pass we will sample and then store it into the vertex 
         }
-        //*/
+        // * /
+    }*/
+
+    for (int i = 0; i < viewVerts.size(); i += 3) {
+        ViewVertex& v0 = viewVerts[i];
+        ViewVertex& v1 = viewVerts[i + 1];
+        ViewVertex& v2 = viewVerts[i + 2];
+        Material m = meshes[v0.GetMaterialIndex()].material;
+
+        if (m.map_Kd != NULL) {
+            Vec2<float> triMidpointUV = (v0.GetUV() + v1.GetUV() + v2.GetUV()) / 3.f;
+
+            float shiftAmount = 0.15;
+
+            Vec2<float> uv0Shifted = v0.GetUV() + (triMidpointUV - v0.GetUV()) * shiftAmount;
+            Vec2<float> uv1Shifted = v1.GetUV() + (triMidpointUV - v1.GetUV()) * shiftAmount;
+            Vec2<float> uv2Shifted = v2.GetUV() + (triMidpointUV - v2.GetUV()) * shiftAmount;
+
+            //This way is the old idea, instead let's attempt to use a method which blends the same vertices 2 separate colours to reduce triangle artifacts.
+            v0.SetColour(m.map_Kd->SampleBilinear(uv0Shifted));
+            v1.SetColour(m.map_Kd->SampleBilinear(uv1Shifted));
+            v2.SetColour(m.map_Kd->SampleBilinear(uv2Shifted));
+        }
+
     }
 
+    /*
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     start = std::chrono::high_resolution_clock::now();
@@ -557,7 +582,14 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
         projectionVertices.push_back(ProjectVertex(n.v0));
         projectionVertices.push_back(ProjectVertex(n.v1));
         projectionVertices.push_back(ProjectVertex(n.v2));
+    }*/
+
+    std::vector<ProjectionVertex> projectionVertices;
+    projectionVertices.reserve(viewVerts.size());
+    for (ViewVertex& v : viewVerts) {
+        projectionVertices.push_back(ProjectVertex(v));
     }
+    
 
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

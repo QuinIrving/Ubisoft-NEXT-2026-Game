@@ -14,6 +14,7 @@ public:
 
 	Vec4<float> operator*(const Mat4<float>& rhs) const { return Vec4<float>(m_position) * rhs; }
 
+	//Vec3<float> GetPosition() const { return m_position; }
 	const Vec3<float>& GetPosition() const { return m_position; }
 	const Vec4<float>& GetColour() const { return m_colour; }
 	const Vec3<float>& GetNormal() const { return m_normal; }

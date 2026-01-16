@@ -4,6 +4,7 @@
 #include <Graphics/ModelAttributes.h>
 #include "QuadMesh.h"
 #include "Model.h"
+#include <Loaders/TextureLoader.h>
 
 class Quad {
 public:
@@ -27,6 +28,7 @@ public:
 	//ModelAttributes m_attributes;
 
 	Mesh GetMesh();
+	Mesh GetMesh(std::vector<TextureLoader::UVTri> uvTriangles);
 	ModelEdge GetAdjacencyTable();
 
 private:
