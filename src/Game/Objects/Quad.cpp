@@ -64,6 +64,7 @@ Mesh Quad::GetMesh(std::vector<TextureLoader::UVTri> uvTriangles) {
 	Mesh m;
 	
 	std::vector<Vertex> mVs = m_mesh.GetVertices();
+	std::vector<Vertex> newMvs;
 
 	for (TextureLoader::UVTri t : uvTriangles) {
 		// interpolate the world position and create the geometry as necessary.
@@ -71,17 +72,17 @@ Mesh Quad::GetMesh(std::vector<TextureLoader::UVTri> uvTriangles) {
 		Vec2<float> v1 = t.v1;
 		Vec2<float> v2 = t.v2;
 
-		mVs.push_back(GetVertexFromUV(v0, Vec2<float>(mVs[1].GetPosition().x, mVs[1].GetPosition().y), Vec2<float>(mVs[2].GetPosition().x, mVs[2].GetPosition().y),
+		newMvs.push_back(GetVertexFromUV(v0, Vec2<float>(mVs[1].GetPosition().x, mVs[1].GetPosition().y), Vec2<float>(mVs[2].GetPosition().x, mVs[2].GetPosition().y),
 			Vec2<float>(mVs[0].GetPosition().x, mVs[0].GetPosition().y), Vec2<float>(mVs[4].GetPosition().x, mVs[4].GetPosition().y)));
 
-		mVs.push_back(GetVertexFromUV(v1, Vec2<float>(mVs[1].GetPosition().x, mVs[1].GetPosition().y), Vec2<float>(mVs[2].GetPosition().x, mVs[2].GetPosition().y),
+		newMvs.push_back(GetVertexFromUV(v1, Vec2<float>(mVs[1].GetPosition().x, mVs[1].GetPosition().y), Vec2<float>(mVs[2].GetPosition().x, mVs[2].GetPosition().y),
 			Vec2<float>(mVs[0].GetPosition().x, mVs[0].GetPosition().y), Vec2<float>(mVs[4].GetPosition().x, mVs[4].GetPosition().y)));
 
-		mVs.push_back(GetVertexFromUV(v2, Vec2<float>(mVs[1].GetPosition().x, mVs[1].GetPosition().y), Vec2<float>(mVs[2].GetPosition().x, mVs[2].GetPosition().y),
+		newMvs.push_back(GetVertexFromUV(v2, Vec2<float>(mVs[1].GetPosition().x, mVs[1].GetPosition().y), Vec2<float>(mVs[2].GetPosition().x, mVs[2].GetPosition().y),
 			Vec2<float>(mVs[0].GetPosition().x, mVs[0].GetPosition().y), Vec2<float>(mVs[4].GetPosition().x, mVs[4].GetPosition().y)));
 	}
 
-	m.geometry = std::make_shared<MeshGeometry>(MeshGeometry(mVs));
+	m.geometry = std::make_shared<MeshGeometry>(MeshGeometry(newMvs));
 	m.material = material;
 
 	return m;

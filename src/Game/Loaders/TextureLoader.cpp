@@ -645,8 +645,8 @@ namespace {
 
 		}*/
 
-		//const int KERNEL_SIZE = 7;
-		const int KERNEL_SIZE = 2;
+		const int KERNEL_SIZE = 7;
+		//const int KERNEL_SIZE = 2;
 		//const int SECTOR_COUNT = 4;
 
 		//std::vector<Vec3<float>> boxAvgCols;
@@ -1459,6 +1459,7 @@ std::vector<Poly> EmbedPolyHoles(std::vector<Circuit> circuits, uint64_t totalIm
 				continue;
 			}
 
+			continue;
 			Poly hole;
 			hole.outerVertices = lockedVertices;
 			hole.regionID = c.regionID;
@@ -1555,7 +1556,7 @@ struct Tri {
 };
 
 // CCW: > 0, CW: < 0, Collinear (on line): 0
-double EdgeOrientation(const Vec2<long double>& lineA, const Vec2<long double>& lineB, const Vec2<long double>& point) {
+long double EdgeOrientation(const Vec2<long double>& lineA, const Vec2<long double>& lineB, const Vec2<long double>& point) {
 	return (lineB.x - lineA.x) * (point.y - lineA.y) - (point.x - lineA.x) * (lineB.y - lineA.y);
 }
 
@@ -1568,15 +1569,15 @@ bool IsCCW(const Vec2<long double>& a, const Vec2<long double>& b, const Vec2<lo
 // 1 If the point is to the right of the segment, 0 if the point is to the left of the segment 
 int PointDirectionFromLineSegment(const Vec2<long double>& lineA, const Vec2<long double>& lineB, const Vec2<long double>& point) {
 	//float dir = (lineA - lineB).CrossProduct(lineA - point);
-	double dir = EdgeOrientation(lineA, lineB, point);
+	long double dir = EdgeOrientation(lineA, lineB, point);
 	return (dir < -EPSILON) ? 1 : 0;
 }
 
 bool DoLineSegmentsIntersect(const Vec2<long double>& a1, const Vec2<long double>& b1, const Vec2<long double>& a2, const Vec2<long double>& b2) {
-	double orientation1 = EdgeOrientation(a1, b1, a2);
-	double orientation2 = EdgeOrientation(a1, b1, b2);
-	double orientation3 = EdgeOrientation(a2, b2, a1);
-	double orientation4 = EdgeOrientation(a2, b2, b1);
+	long double orientation1 = EdgeOrientation(a1, b1, a2);
+	long double orientation2 = EdgeOrientation(a1, b1, b2);
+	long double orientation3 = EdgeOrientation(a2, b2, a1);
+	long double orientation4 = EdgeOrientation(a2, b2, b1);
 
 	if (orientation1 * orientation2 < -EPSILON && orientation3 * orientation4 < -EPSILON) {
 		return true;
@@ -2604,7 +2605,7 @@ std::vector<TextureLoader::UVTri> TextureLoader::GenerateTextureTopology(std::st
 	OutputDebugString(", Total Vertices: ");
 	OutputDebugString(std::to_string(vertsTotal).c_str());
 	OutputDebugString("\n");
-	std::vector<Circuit> simplifiedCircuits = SimplifyPolygons(vertexManager, circuitPolygons, 550);
+	std::vector<Circuit> simplifiedCircuits = SimplifyPolygons(vertexManager, circuitPolygons, 155);
 	vertsTotal = 0;
 	for (Circuit& c : simplifiedCircuits) {
 		vertsTotal += c.vertices.size();

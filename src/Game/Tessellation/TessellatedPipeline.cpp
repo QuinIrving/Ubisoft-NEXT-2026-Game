@@ -38,7 +38,7 @@ TessellatedPipeline& TessellatedPipeline::GetInstance() {
 
 
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
-constexpr bool wireframe = false;
+constexpr bool wireframe = true;
 //constexpr float errorThreshold = 999999999.f;
 //constexpr float errorThreshold = 32.f;
 //constexpr float errorThreshold = 16.f;
@@ -562,9 +562,9 @@ void TessellatedPipeline::Render(const std::vector<Mesh>& meshes, const Mat4<flo
             Vec2<float> uv2Shifted = v2.GetUV() + (triMidpointUV - v2.GetUV()) * shiftAmount;
 
             //This way is the old idea, instead let's attempt to use a method which blends the same vertices 2 separate colours to reduce triangle artifacts.
-            v0.SetColour(m.map_Kd->SampleBilinear(uv0Shifted));
-            v1.SetColour(m.map_Kd->SampleBilinear(uv1Shifted));
-            v2.SetColour(m.map_Kd->SampleBilinear(uv2Shifted));
+            //v0.SetColour(m.map_Kd->SampleBilinear(uv0Shifted));
+            //v1.SetColour(m.map_Kd->SampleBilinear(uv1Shifted));
+            //v2.SetColour(m.map_Kd->SampleBilinear(uv2Shifted));
         }
 
     }
