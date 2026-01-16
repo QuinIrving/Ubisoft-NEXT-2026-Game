@@ -90,6 +90,10 @@ ModelAttributes ma;
 
 int frames = 0;
 
+Quad q2 = Quad(1, 1, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
+std::vector<Mesh> q2Meshes;
+ModelEdge q2Edges;
+
 //------------------------------------------------------------------------
 // Called before first update. Do any initial setup here.
 //------------------------------------------------------------------------
@@ -103,6 +107,8 @@ void Init()
 
 	moveForward = true;
 	q.Translate(0, 0, -2);
+	q2.Translate(-2, 0, 0);
+	q2.Rotate(0, 90, 0);
 	//quadMeshes.push_back(q.GetMesh());
 	quadEdges = q.GetAdjacencyTable();
 
@@ -128,6 +134,8 @@ void Init()
 	//std::string t = "./data/Textures/Rock/TilesCheckeredColor.tga";
 	TextureLoader::textureMap["brickwall"] = TextureLoader::ProcessTGA(t);
 	quadMeshes.push_back(q.GetMesh(TextureLoader::GenerateTextureTopology(t)));
+	q2Meshes.push_back(q2.GetMesh());
+	q2Meshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
 
 	//TextureLoader::textureMap["brickwall"] = TextureLoader::GenerateTextureTopology(t);
 	
@@ -346,6 +354,7 @@ void Render()
 	/* TESSELLATED PIPELINE */ // Don't forget I need to share cameras.
 	//p.Render(fox.GetMeshes(), fox.GetModelMatrix(), fox.GetAdjacencyTable());
 	p.Render(quadMeshes, q.GetModelMatrix(), quadEdges);
+	p.Render(q2Meshes, q2.GetModelMatrix(), q2Edges);
 	// DONE!!!
 	
 

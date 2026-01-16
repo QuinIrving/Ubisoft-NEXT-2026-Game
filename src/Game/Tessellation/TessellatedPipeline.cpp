@@ -38,7 +38,7 @@ TessellatedPipeline& TessellatedPipeline::GetInstance() {
 
 
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
-constexpr bool wireframe = true;
+constexpr bool wireframe = false;
 //constexpr float errorThreshold = 999999999.f;
 //constexpr float errorThreshold = 32.f;
 //constexpr float errorThreshold = 16.f;

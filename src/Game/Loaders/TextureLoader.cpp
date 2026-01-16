@@ -645,8 +645,8 @@ namespace {
 
 		}*/
 
-		const int KERNEL_SIZE = 7;
-		//const int KERNEL_SIZE = 2;
+		//const int KERNEL_SIZE = 7;
+		const int KERNEL_SIZE = 5;
 		//const int SECTOR_COUNT = 4;
 
 		//std::vector<Vec3<float>> boxAvgCols;
@@ -1773,6 +1773,24 @@ void LegalizeTriangles(std::vector<Tri>& tris, std::vector<Vec2<double>>& points
 	}
 }*/
 
+bool IsPointOnSegment(const Vec2<long double>& A,	const Vec2<long double>& B,	const Vec2<long double>& P)
+{
+	// 1. Collinearity
+	long double cross =
+		(B.x - A.x) * (P.y - A.y) -
+		(B.y - A.y) * (P.x - A.x);
+
+	if (fabsl(cross) > EPSILON) {
+		return false;
+	}
+
+	// 2. Projection bounds
+	long double dot =
+		(P.x - A.x) * (P.x - B.x) +
+		(P.y - A.y) * (P.y - B.y);
+
+	return dot <= EPSILON;
+}
 
 
 // -4: point on edge 2, -3: point on edge 1, -2: point on edge 0, -1: point in triangle, 0-2: the specific adjIndex edge that we should move towards.
@@ -1783,8 +1801,13 @@ int FindNextTriangleMove(const std::vector<Vec2<long long>>& allPoints, const Tr
 
 	// we can do a loop, and the second we find a CW edge, that must be the edge direction we should go
 	for (int i = 0; i < 3; ++i) {
-		long double orientation = EdgeOrientation({ static_cast<long double>(allPoints[triangle.vIndices[(i + 1) % 3]].x), static_cast<long double>(allPoints[triangle.vIndices[(i + 1) % 3]].y) },
-			{static_cast<long double>(allPoints[triangle.vIndices[(i + 2) % 3]].x), static_cast<long double>(allPoints[triangle.vIndices[(i + 2) % 3]].y)}, point);
+		auto& v1 = allPoints[triangle.vIndices[(i + 1) % 3]];
+		auto& v2 = allPoints[triangle.vIndices[(i + 2) % 3]];
+
+		auto v1F = Vec2<long double>(static_cast<long double>(v1.x), static_cast<long double>(v1.y));
+		auto v2F = Vec2<long double>(static_cast<long double>(v2.x), static_cast<long double>(v2.y));
+
+		long double orientation = EdgeOrientation(v1F, v2F, point);
 		/*OutputDebugString(("(" + std::to_string(allPoints[triangle.vIndices[(i + 1) % 3]].x) + ", " + std::to_string(allPoints[triangle.vIndices[(i + 1) % 3]].y) + ")").c_str());
 		OutputDebugString((" (" + std::to_string(allPoints[triangle.vIndices[(i + 2) % 3]].x) + ", " + std::to_string(allPoints[triangle.vIndices[(i + 2) % 3]].y) + ")").c_str());
 		OutputDebugString((" Point: (" + std::to_string(point.x) + ", " + std::to_string(point.y) + ")").c_str());
@@ -1793,35 +1816,45 @@ int FindNextTriangleMove(const std::vector<Vec2<long long>>& allPoints, const Tr
 		OutputDebugString((" EdgeOrientation: " + std::to_string(orientation)).c_str());
 		OutputDebugString("\n");*/
 
-		if (orientation < -EPSILON) {
-			return i;
+		if ((point - v1F).GetMagnitudeSquared() < EPSILON || (point - v2F).GetMagnitudeSquared() < EPSILON) {
+			return -5;
 		}
 
 		// If it's within this threshold, then the point is on this edge line within the current triangle
 		if (std::abs(orientation) < EPSILON) {
 			// Check if it's within the line segment itself
-			auto& v1 = allPoints[triangle.vIndices[(i + 1) % 3]];
-			auto& v2 = allPoints[triangle.vIndices[(i + 2) % 3]];
+			
 
-			if (point.x >= std::min<double>(v1.x, v2.x) && point.x <= std::max<double>(v1.x, v2.x)
+			/*if (point.x >= std::min<double>(v1.x, v2.x) && point.x <= std::max<double>(v1.x, v2.x)
 				&& point.y >= std::min<double>(v1.y, v2.y) && point.y <= std::max<double>(v1.y, v2.y)) {
 				edgeIdx = (-i) - 2;
+			}*/
+
+			// check if point is on edge, if so we must do an edge split
+			if (IsPointOnSegment(v1F, v2F, point)) {
+				return (-i) - 2;
 			}
-			//return (-i) - 2;
-			//edgeIdx = (-i) - 2;
 		}
+
+		if (orientation < -EPSILON) {
+			return i;
+		}
+
+		
 	}
 
-	return edgeIdx;
+	//return edgeIdx;
 
 	// Reaching here means it simply is within the triangle
-	//return -1;
+	return -1;
 }
 
 
-void TriangulateInTriangle(std::stack<int>& dirtyTriangles, std::vector<Tri>& triangles, Tri& parent, int parentIdx, uint64_t pointIdx, std::vector<Vec2<long long>>& allPoints) {
+void TriangulateInTriangle(std::stack<int>& dirtyTriangles, std::vector<Tri>& triangles, int parentIdx, uint64_t pointIdx, std::vector<Vec2<long long>>& allPoints) {
 	// The idea here, is we know the point is within the parent, we only care about connecting these new vertex indices, as the position remains stable.
 	// Float will be used later when we need to handle the dirty stack, to check actual if adjacent point is within circle made by new triangle
+	Tri& parent = triangles[parentIdx];
+	
 	int v0 = parent.vIndices[0];
 	int v1 = parent.vIndices[1];
 	int v2 = parent.vIndices[2];
@@ -2349,12 +2382,14 @@ std::vector<TextureLoader::UVTri> TriangulatePolygons(std::vector<Poly> polygons
 	int super2 = numRealPoints + 2;
 
 	std::vector<Tri> triangles;
+	triangles.reserve(allPoints.size() * 3);
 	triangles.push_back({ super0, super1, super2, 0xFFFFFFFF });
 
 	std::unordered_map<uint64_t, std::vector<uint64_t>> currTriEdges; // Should be paired with our constraint edges, so that we can later check what edges from the constraints we have in here.
 	// Need to remove, add, and check if we have edge. so Again we will go with non-directional edges here.
 
 	std::stack<int> dirtyTriangles; // contains the triangle index;
+	//dirtyTriangles.reserve
 
 	//triangles.push_back(Tri({ -100, -100 }, { 100, -100 }, {0, 100}, 0xFFFFFFFF));
 
@@ -2370,7 +2405,7 @@ std::vector<TextureLoader::UVTri> TriangulatePolygons(std::vector<Poly> polygons
 			OutputDebugString("Duplicate point\n");
 		}
 
-		auto& p = allPoints[vertexIdx[MakeEdgeKey(po.x, po.y)]];
+		auto p = allPoints[vertexIdx[MakeEdgeKey(po.x, po.y)]];
 		// For our triangles we create, may want to add in their Vec2 int counterpart, so that we can access edges for CDT.
 
 		//Tri& currTri = triangles[triangles.size() - 1];
@@ -2380,7 +2415,7 @@ std::vector<TextureLoader::UVTri> TriangulatePolygons(std::vector<Poly> polygons
 		int moveIdx = 0;
 		while (moveIdx >= 0) {
 			//moveIdx = FindNextTriangleMove(allPoints, currTri, p);
-			Tri& currTri = triangles[currTriIdx];
+			Tri currTri = triangles[currTriIdx];
 			moveIdx = FindNextTriangleMove(allPoints, currTri, { static_cast<long double>(p.x), static_cast<long double>(p.y)});
 			//OutputDebugString("moveIdx: ");
 			//OutputDebugString(std::to_string(moveIdx).c_str());
@@ -2406,13 +2441,16 @@ std::vector<TextureLoader::UVTri> TriangulatePolygons(std::vector<Poly> polygons
 		// else if it's typical -1, simply make the standard 3 triangles.
 		if (moveIdx == -1) {
 			//TriangulateInTriangle(dirtyTriangles, triangles, currTri, currTriIdx, vertexIdx[MakeEdgeKey(po.x, po.y)]);
-			TriangulateInTriangle(dirtyTriangles, triangles, triangles[currTriIdx], currTriIdx, vertexIdx[MakeEdgeKey(po.x, po.y)], allPoints);
+			TriangulateInTriangle(dirtyTriangles, triangles, currTriIdx, vertexIdx[MakeEdgeKey(po.x, po.y)], allPoints);
+		}
+		else if (moveIdx < -4) {
+			continue;
 		}
 		else if (moveIdx < -1) {
 			// We should do the edge specific triangulation here.
 			int otherTriIdx = -(moveIdx + 2);
 			if (triangles[currTriIdx].adjIndices[otherTriIdx] == -1) {
-				TriangulateInTriangle(dirtyTriangles, triangles, triangles[currTriIdx], currTriIdx, vertexIdx[MakeEdgeKey(po.x, po.y)], allPoints);
+				TriangulateInTriangle(dirtyTriangles, triangles, currTriIdx, vertexIdx[MakeEdgeKey(po.x, po.y)], allPoints);
 			}
 			else {
 				// It means we do share with another triangle, so we can do the double split here.
@@ -2552,9 +2590,29 @@ std::vector<TextureLoader::UVTri> TriangulatePolygons(std::vector<Poly> polygons
 			continue;
 		}
 
-		Vec2<float> v0 = { std::max<float>(allPointsOriginal[i0].x / static_cast<float>(t.width), 0.f), std::min<float>(allPointsOriginal[i0].y / static_cast<float>(t.height), 1.f) };
-		Vec2<float> v1 = { std::max<float>(allPointsOriginal[i1].x / static_cast<float>(t.width), 0.f), std::min<float>(allPointsOriginal[i1].y / static_cast<float>(t.height), 1.f) };
-		Vec2<float> v2 = { std::max<float>(allPointsOriginal[i2].x / static_cast<float>(t.width), 0.f), std::min<float>(allPointsOriginal[i2].y / static_cast<float>(t.height), 1.f) };
+		Vec2<float> v0 = { std::clamp<float>(allPointsOriginal[i0].x / static_cast<float>(t.width), 0.f, 1.f), std::clamp<float>(allPointsOriginal[i0].y / static_cast<float>(t.height), 0.f, 1.f) };
+		Vec2<float> v1 = { std::clamp<float>(allPointsOriginal[i1].x / static_cast<float>(t.width), 0.f, 1.f), std::clamp<float>(allPointsOriginal[i1].y / static_cast<float>(t.height), 0.f, 1.f) };
+		Vec2<float> v2 = { std::clamp<float>(allPointsOriginal[i2].x / static_cast<float>(t.width), 0.f, 1.f), std::clamp<float>(allPointsOriginal[i2].y / static_cast<float>(t.height), 0.f, 1.f) };
+
+		/*OutputDebugString( (std::to_string(i0) + ", " + std::to_string(i1) + ", " + std::to_string(i2)).c_str());
+		OutputDebugString(("(" + std::to_string(v0.x) + ", " + std::to_string(v0.y) + ") " + 
+			"(" + std::to_string(v1.x) + ", " + std::to_string(v1.y) + ") " + 
+			"(" + std::to_string(v2.x) + ", " + std::to_string(v2.y) + ")\n" ).c_str());*/
+
+		long double area = 0.5 * std::abs(
+			v0.x * (v1.y - v2.y) +
+			v1.x * (v2.y - v0.y) +
+			v2.x * (v0.y - v1.y)
+		);
+
+		if (area < 0.000001f) {
+			continue;
+		}
+
+		if (std::abs(EdgeOrientation({ (long double)(v0.x), (long double)(v0.y) }, { (long double)(v1.x), (long double)(v1.y) }, { (long double)(v2.x), (long double)(v2.y) })) < EPSILON) {
+			continue;
+		}
+
 		uvTriangles.push_back({ v0, v1, v2 });
 	}
 
