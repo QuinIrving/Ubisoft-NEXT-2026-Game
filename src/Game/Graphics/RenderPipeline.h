@@ -22,7 +22,7 @@ public:
     static RenderPipeline& GetInstance();
 
     // business logic -> probably some way to bind vertex shader, not sure if needed though.
-    void Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) const;
+    void Render(const std::vector<Vertex>& vertices, const Mat4<float>& modelMatrix, const Mat4<float>& ViewMatrix, const Colour& c) const;
     
     ViewVertex ProcessVertex(const Vertex& v, const Mat4<float> M, const Mat4<float> V) const;
     ProjectionVertex ProjectVertex(const ViewVertex& v) const;

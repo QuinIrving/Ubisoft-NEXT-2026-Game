@@ -16,6 +16,7 @@ public:
 	void Translate(const Vec3<float>& v);
 
 	void SetPosition(Vec3<float> pos) { m_position = Vec4<float>(pos); }
+	void SetRotation(float pitch, float yaw) { m_pitch = pitch; m_yaw = yaw; }
 
 	Quaternion GetRotation() const { return m_rotation; }
 	Vec4<float> GetPosition() const { return m_position; }
@@ -25,8 +26,10 @@ public:
 
 	Mat4<float> GetViewMatrix() const;
 
-	float GetMouseSensitivty() const { return m_senstivity; }
-	void SetMouseSensitivty(float sense) { m_senstivity = sense; }
+	float GetMouseSensitivty() const { return m_mouseSens; }
+	void SetMouseSensitivty(float sense) { m_mouseSens = sense; }
+	float GetControllerSensitivty() const { return m_controllerSens; }
+	void SetControllerSensitivty(float sense) { m_controllerSens = sense; }
 
 private:
 	Quaternion m_rotation{};
@@ -34,5 +37,6 @@ private:
 
 	float m_pitch;
 	float m_yaw;
-	float m_senstivity = 100;
+	float m_mouseSens = 100;
+	float m_controllerSens = 250;
 };

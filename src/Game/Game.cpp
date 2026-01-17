@@ -25,26 +25,16 @@
 #include "Graphics/Pipeline.h"
 #include "Objects/Quad.h"
 #include <main.h>
-#include "Graphics/Pipeline.h"
-#include "Tessellation/TessellatedPipeline.h"
 #include "Loaders/ObjectLoader.h"
 #include "Tessellation/TriangleNode.h"
+#include "Graphics/RenderPipeline.h"
+#include "Entities/Player/Player.h"
 
 
+RenderPipeline& p = RenderPipeline::GetInstance();
+Player player;
 //Pipeline& p = Pipeline::GetInstance();
-TessellatedPipeline& p = TessellatedPipeline::GetInstance();
-
-//------------------------------------------------------------------------
-// Example data....
-//------------------------------------------------------------------------
-CSimpleSprite* testSprite;
-enum
-{
-	ANIM_FORWARDS,
-	ANIM_BACKWARDS,
-	ANIM_LEFT,
-	ANIM_RIGHT,
-};
+//TessellatedPipeline& p = TessellatedPipeline::GetInstance();
 
 // This is where our ECS should be
 /*Vec2<float> t2;
@@ -55,6 +45,7 @@ Mat4<float> m;*/
 
 //m.Print();
 //q.Print();
+/*
 bool moveForward;
 
 // Don't forget we have a negative z camera view.
@@ -76,23 +67,45 @@ ModelEdge quadEdges;
 Model bunny;
 Model fox;
 //------------------------------------------------------------------------
-
+*/
 float mX;
 float mY;
-Vec2<float> mousePos;
+static Vec2<float> mousePos;
 Vec2<float> diff;
 
 Vec2<int> windowSize;
+int frames = 0;
 
+/*
 std::vector<Vertex> foxVerts;
 std::vector<uint32_t> foxIndices;
 ModelAttributes ma;
 
-int frames = 0;
+
 
 Quad q2 = Quad(1, 1, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
 std::vector<Mesh> q2Meshes;
-ModelEdge q2Edges;
+ModelEdge q2Edges;*/
+Quad q1 = Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f));
+Quad q2 = q1;
+Quad q3 = q1;
+Quad q4 = q1;
+//std::vector<Mesh> q2Meshes;
+bool isEscapeDown = false; // need a whole handler for this of keeping track of already down keys.
+bool showCursor = false;
+
+bool ignoreNextMouse = false;
+bool wasCursorVisibleLastFrame = false;
+int ignoreMouseFrames = 0;
+
+bool fullScreen = false;
+int prevWindowWidth = WINDOW_WIDTH;
+int prevWindowHeight = WINDOW_HEIGHT;
+
+char textBufferA[64];
+char textBufferB[64];
+
+int windowChange = 0;
 
 //------------------------------------------------------------------------
 // Called before first update. Do any initial setup here.
@@ -102,16 +115,20 @@ void Init()
 	/*alignas(16) float o[4] = {1.f, 2.f, 3.f, 4.f};
 	__m128 veca = _mm_load_ps(o);*/ // SIMD for SSE x86, need to worry about mac os as well.
 	windowSize = { WINDOW_WIDTH, WINDOW_HEIGHT };
+	glutWarpPointer(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 	App::GetMousePos(mX, mY);
-	mousePos = { mX, mY };
+	mousePos = { WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f };
+	glutSetCursor(GLUT_CURSOR_NONE);
+	player = Player();
 
+	/*
 	moveForward = true;
 	q.Translate(0, 0, -2);
 	q2.Translate(-2, 0, 0);
 	q2.Rotate(0, 90, 0);
 	//quadMeshes.push_back(q.GetMesh());
 	quadEdges = q.GetAdjacencyTable();
-
+	*/
 	/*for (int i = 0; i < 1966; ++i) {
 		indices.push_back(i);
 		randV.push_back(Vertex(1, 2, 3));
@@ -119,10 +136,11 @@ void Init()
 
 	//bunny = ObjectLoader::Load("./data/Models/Bunny/stanford-bunny.obj");
 	//bunny.Translate(0, 0, -2);
+	/*
 	fox = ObjectLoader::Load("./data/Models/Fox/low-poly-fox.obj");
 	fox.Translate(0, 0.25, -1);
 	fox.Rotate(180, 90, 0);
-	fox.Scale(0.025);
+	fox.Scale(0.025);*/
 
 	//TriangleNode::MAX_DEPTH = 15;
 
@@ -133,13 +151,25 @@ void Init()
 	//std::string t = "./data/Textures/Rock/TilesPatternColor.tga";
 	//std::string t = "./data/Textures/Rock/TilesCheckeredColor.tga";
 	TextureLoader::textureMap["brickwall"] = TextureLoader::ProcessTGA(t);
-	quadMeshes.push_back(q.GetMesh(TextureLoader::GenerateTextureTopology(t)));
-	q2Meshes.push_back(q2.GetMesh());
-	q2Meshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
+	/*quadMeshes.push_back(q.GetMesh(TextureLoader::GenerateTextureTopology(t)));
+	*/
+	
+
+	q1.Translate(0, 0.f, 0);
+	q2.Translate(0, 0, -5.f);
+	q3.Translate(5.f, 0, -5.f);
+	q4.Translate(5.f, 0, 0);
+	//q1.Scale(50, 50, 0);
+	q1.Rotate(90, 0, 0);
+	q2.Rotate(90, 0, 0);
+	q3.Rotate(90, 0, 0);
+	q4.Rotate(90, 0, 0);
+	//q2Meshes.push_back(q2.GetMesh());
+	//q2Meshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
 
 	//TextureLoader::textureMap["brickwall"] = TextureLoader::GenerateTextureTopology(t);
-	
-	quadMeshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
+
+	//quadMeshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);*/
 
 	/*foxVerts = fox.GetMeshes()[0].geometry->processedMesh;
 	foxIndices.reserve(foxVerts.size());
@@ -157,18 +187,6 @@ void Init()
 	}
 
 	ma.modelMatrix = bunny.GetModelMatrix();*/
-	//------------------------------------------------------------------------
-	// Example Sprite Code....
-	testSprite = App::CreateSprite("./data/TestData/Test.bmp", 8, 4);
-	testSprite->SetPosition(400.0f, 400.0f);
-	const float speed = 1.0f / 15.0f;
-	testSprite->CreateAnimation(ANIM_BACKWARDS, speed, { 0,1,2,3,4,5,6,7 });
-	testSprite->CreateAnimation(ANIM_LEFT, speed, { 8,9,10,11,12,13,14,15 });
-	testSprite->CreateAnimation(ANIM_RIGHT, speed, { 16,17,18,19,20,21,22,23 });
-	testSprite->CreateAnimation(ANIM_FORWARDS, speed, { 24,25,26,27,28,29,30,31 });
-	testSprite->SetScale(1.0f);
-	int a = 1;
-	//------------------------------------------------------------------------
 }
 
 //------------------------------------------------------------------------
@@ -177,11 +195,21 @@ void Init()
 //------------------------------------------------------------------------
 void Update(const float deltaTime)
 {
+	if (windowSize != Vec2<int>(WINDOW_WIDTH, WINDOW_HEIGHT)) {
+		p.ResizeWindowProjection(static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT));
+		windowSize = Vec2<int>(WINDOW_WIDTH, WINDOW_HEIGHT);
+		glutWarpPointer(WINDOW_WIDTH / 2, (int)std::ceil(WINDOW_HEIGHT / 2));
+		App::GetMousePos(mX, mY);
+		windowChange = 1; // denotes that we just changed so skip a frame before going again
+	}
+
+	float deltaSeconds = deltaTime / 1000.f;
 	frames++;
+	
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
-	testSprite->Update(deltaTime);
-	if (App::GetController().GetLeftThumbStickX() > 0.5f)
+	//testSprite->Update(deltaTime);
+	/*if (App::GetController().GetLeftThumbStickX() > 0.5f)
 	{
 		testSprite->SetAnimation(ANIM_RIGHT);
 		float x, y;
@@ -241,7 +269,7 @@ void Update(const float deltaTime)
 	if (App::GetController().CheckButton(App::BTN_A, true))
 	{
 		testSprite->SetAnimation(-1);
-	}
+	}*/
 	//------------------------------------------------------------------------
 	// Sample Sound.
 	//------------------------------------------------------------------------
@@ -254,87 +282,91 @@ void Update(const float deltaTime)
 		App::StopAudio("./Data/TestData/Test.wav");
 	}
 
-	//q.Translate(0, 0.002 * deltaTime, (-0.001) * deltaTime);
-	//q.Rotate(0.021 * deltaTime, 0.021 * deltaTime, 0);
+	if (App::IsKeyPressed(App::KEY_ESC) && !isEscapeDown) {
+		showCursor = !showCursor;
+		
+		if (!showCursor) {
+			glutSetCursor(GLUT_CURSOR_NONE);
+		}
+		else {
+			glutSetCursor(GLUT_CURSOR_INHERIT);
+		}
 
-	/*float t = 0.45 / deltaTime;
-	t = (moveForward) ? t : (-t);
-
-	if (q.GetTranslation().z < -5) {
-		t *= 2.5;
+		isEscapeDown = true;
 	}
 
-	if (q.GetTranslation().z > -0.55 && t > 0) {
-		moveForward = false;
+	if (!App::IsKeyPressed(App::KEY_ESC) && isEscapeDown) {
+		isEscapeDown = false;
 	}
-	else if (q.GetTranslation().z < -10 && t < 0) {
-		moveForward = true;
-	}*/
 
 	// This whole issue is due to the type of pipeline naming, need to share the same camera between pipelines....
 
 	// Mouse rotation
 	/*Need to make all of this compatible with a controller as well! FOr movements and looking and jumping etc, should have a switch statement to handle either scenario*/
-	App::GetMousePos(mX, mY);
-	diff = Vec2<float>(mX, mY) - mousePos;
-	mousePos = { mX, mY };
-	float degX = (diff.y / static_cast<float>(APP_VIRTUAL_HEIGHT)) * p.camera.GetMouseSensitivty(); // Around x axis, we care about mouse Y
-	float degY = (-diff.x / static_cast<float>(APP_VIRTUAL_WIDTH)) * p.camera.GetMouseSensitivty(); // Around y axis we care about mouse X
-	p.camera.RotateXY(degX, degY);
+	if (!showCursor) {
+		App::GetMousePos(mX, mY);
+		diff = Vec2<float>(mX - mousePos.x, mY - mousePos.y);
+		
+		if (windowChange == 1) { // Our window was changed, but we have dirty mousePos, wait until next frame
+			windowChange = 2;
+		}
+		else if (windowChange == 2) {
+			mousePos = Vec2<float>(mX, mY);
+			windowChange = 0;
+		}
+		snprintf(textBufferA, sizeof(textBufferA), "New Mouse: (%f, %f)", mX, mY);
+		
+		float degX = (diff.y / static_cast<float>(APP_INIT_WINDOW_HEIGHT)) * player.GetMouseSensitivty(); // Around x axis, we care about mouse Y
+		float degY = (-diff.x / static_cast<float>(APP_INIT_WINDOW_WIDTH)) * player.GetMouseSensitivty(); // Around y axis we care about mouse X
+		glutWarpPointer(WINDOW_WIDTH / 2, (int)std::ceil(WINDOW_HEIGHT / 2));
+		snprintf(textBufferB, sizeof(textBufferB), "Warped Mouse: (%f, %f)", mousePos.x, mousePos.y);
 
-	float camX = 0, camU = 0;
-	float moveSpeed = 0.007;
+		player.RotateXY(degX, degY);
+	}
+
+	int moveRight = 0;
+	int moveForward = 0;
 
 	// Translation -> controller and keyboard same
-	if (App::GetController().GetLeftThumbStickX() > 0.5f)
+	if (App::GetController().GetLeftThumbStickX() > 0.5f || App::IsKeyPressed(App::KEY_D))
 	{
-		camX += moveSpeed;
+		moveRight += 1;
 	}
-	if (App::GetController().GetLeftThumbStickX() < -0.5f)
+	if (App::GetController().GetLeftThumbStickX() < -0.5f || App::IsKeyPressed(App::KEY_A))
 	{
-		camX -= moveSpeed;
+		moveRight -= 1;
 	}
-	if (App::GetController().GetLeftThumbStickY() > 0.5f)
+	if (App::GetController().GetLeftThumbStickY() > 0.5f || App::IsKeyPressed(App::KEY_W))
 	{
-		camU += moveSpeed;
+		moveForward += 1;
 	}
-	if (App::GetController().GetLeftThumbStickY() < -0.5f)
+	if (App::GetController().GetLeftThumbStickY() < -0.5f || App::IsKeyPressed(App::KEY_S))
 	{
-		camU -= moveSpeed;
+		moveForward -= 1;
+	}
+
+	if (App::GetController().CheckButton(App::BTN_X, false) && player.GetMoveState() != MovementState::AIR) {
+		// add an impulse to the y velocity, and set player as in air.
+		player.UpdateVelocity(Vec3<float>(0.f, -16.f, 0.f));
+		player.TransitionMoveState(MovementState::AIR);
+	}
+	else if (App::IsKeyPressed(App::KEY_SPACE) && player.GetMoveState() != MovementState::AIR) { // same for keyboard
+		player.UpdateVelocity(Vec3<float>(0.f, -16.f, 0.f));
+		player.TransitionMoveState(MovementState::AIR);
 	}
 
 	float camRotY = 0, camRotX = 0; // around the axis
-	float div = 35;
-	// Rotation (right thumb stick, same as mouse)
-	if (App::GetController().GetRightThumbStickX() > 0.5f)
-	{
-		camRotY -= p.camera.GetMouseSensitivty() / div;
-	}
-	if (App::GetController().GetRightThumbStickX() < -0.5f)
-	{
-		camRotY += p.camera.GetMouseSensitivty() / div;
-	}
-	if (App::GetController().GetRightThumbStickY() > 0.5f)
-	{
-		camRotX -= p.camera.GetMouseSensitivty() / div;
-	}
-	if (App::GetController().GetRightThumbStickY() < -0.5f)
-	{
-		camRotX += p.camera.GetMouseSensitivty() / div;
-	}
+	camRotY -= App::GetController().GetRightThumbStickX() * player.GetControllerSensitivty() * (deltaSeconds);
+	camRotX -= App::GetController().GetRightThumbStickY() * player.GetControllerSensitivty() * (deltaSeconds);
+	player.RotateXY(camRotX, camRotY);
 
-	p.camera.RotateXY(camRotX, camRotY);
-	p.camera.Translate(camX, 0, camU);
+	MovementSystem::HandlePlayerMovement(player, Vec3<float>(moveRight, 0, moveForward), deltaSeconds);
 
-	if (windowSize != Vec2<int>(WINDOW_WIDTH, WINDOW_HEIGHT)) {
-		p.ResizeWindowProjection(static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT));
-		windowSize = Vec2<int>(WINDOW_WIDTH, WINDOW_HEIGHT);
+	if (player.GetPosition().y >= 0.f) {
+		player.SetYPosition(0.f);
+		player.ResetOffGroundTimer();
+		player.TransitionMoveState(MovementState::GROUND);
 	}
-
-	//q.Translate(0, 0, t);
-	//p.camera.RotateXY(0, 10 / deltaTime);
-	//p.camera.
-	//q.Rotate(0.1, 0.1, 0);
 }
 
 //------------------------------------------------------------------------
@@ -343,18 +375,17 @@ void Update(const float deltaTime)
 //------------------------------------------------------------------------
 void Render()
 {
-	//v1.SetColour(0, 0, 0, 255);
-	//p.Render(std::vector<Vertex>({v1, v2, v3, v4}), std::vector<uint32_t>({0, 1, 2, 1, 3, 2}), ModelAttributes());
-	//p.Render(q.GetVertices(), q.GetVertexIds(), q.GetModelAttributes());
-
-
+	p.Render(q1.GetVertices(), q1.GetModelMatrix(), player.GetViewMatrix(), Colour(3 / 255.f, 219 / 255.f, 252 / 255.f, 1.f));
+	p.Render(q2.GetVertices(), q2.GetModelMatrix(), player.GetViewMatrix(), Colour(161 / 255.f, 57 / 255.f, 230 / 255.f, 1.f));
+	p.Render(q3.GetVertices(), q3.GetModelMatrix(), player.GetViewMatrix(), Colour(3 / 255.f, 219 / 255.f, 252 / 255.f, 1.f));
+	p.Render(q4.GetVertices(), q4.GetModelMatrix(), player.GetViewMatrix(), Colour(161 / 255.f, 57 / 255.f, 230 / 255.f, 1.f));
 	/* MAIN PIPELINE */
 	//p.Render(bunnyVerts, bunnyIndices, ma);
 	//p.Render(foxVerts, foxIndices, ma);
 	/* TESSELLATED PIPELINE */ // Don't forget I need to share cameras.
 	//p.Render(fox.GetMeshes(), fox.GetModelMatrix(), fox.GetAdjacencyTable());
-	p.Render(quadMeshes, q.GetModelMatrix(), quadEdges);
-	p.Render(q2Meshes, q2.GetModelMatrix(), q2Edges);
+	//p.Render(quadMeshes, q.GetModelMatrix(), quadEdges);
+	//p.Render(q2Meshes, q2.GetModelMatrix(), q2Edges);
 	// DONE!!!
 	
 
@@ -365,7 +396,7 @@ void Render()
 	// Example Sprite Code....
 	//testSprite->Draw();
 
-	float x, y;
+	/*float x, y;
 	App::GetMousePos(x, y);
 	char textBuffer[64];
 	snprintf(textBuffer, sizeof(textBuffer), "Mouse: (%f, %f)", x, y);
@@ -378,6 +409,27 @@ void Render()
 
 	snprintf(textBuffer, sizeof(textBuffer), "Window: (%d, %d)", WINDOW_WIDTH, WINDOW_HEIGHT); // USE THIS VALUE FOR OUR AUTO-CHANGING PROJECTION MATRIX!
 	App::Print(10, APP_VIRTUAL_HEIGHT - 80, textBuffer, 0.2f, 0.55f, 0.98f, GLUT_BITMAP_HELVETICA_10);
+	*/
+
+	char textBuffer[64];
+	snprintf(textBuffer, sizeof(textBuffer), "Pos: (%f, %f, %f)", player.GetPosition().x, player.GetPosition().y, player.GetPosition().z);
+	App::Print(10, APP_VIRTUAL_HEIGHT - 20, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
+
+	snprintf(textBuffer, sizeof(textBuffer), "Vel: (%f, %f, %f)", player.GetVelocity().x, player.GetVelocity().y, player.GetVelocity().z);
+	App::Print(10, APP_VIRTUAL_HEIGHT - 40, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
+
+	App::Print(10, APP_VIRTUAL_HEIGHT - 120, textBufferA, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
+	App::Print(10, APP_VIRTUAL_HEIGHT - 140, textBufferB, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
+
+	std::string stateText = "GROUND";
+	if (player.GetMoveState() == MovementState::AIR) {
+		stateText = "AIR";
+	} else if (player.GetMoveState() == MovementState::GRAPPLEHOOK) {
+		stateText = "GRAPPLEHOOK";
+	}
+
+	snprintf(textBuffer, sizeof(textBuffer), "State: %s", stateText);
+	App::Print(10, APP_VIRTUAL_HEIGHT - 60, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
 
 	// Camera will use a fixed sensitivity (that in settings can be changed), while mouse will use raw input given + sensitivity for our camera input.
 
@@ -391,7 +443,7 @@ void Render()
 	//------------------------------------------------------------------------
 	// Example Line Drawing.
 	//------------------------------------------------------------------------
-	static float a = 0.0f;
+	/*static float a = 0.0f;
 	const float r = 1.0f;
 	float g = 1.0f;
 	float b = 1.0f;
@@ -406,7 +458,7 @@ void Render()
 		g = (float)i / 20.0f;
 		b = (float)i / 20.0f;
 		//App::DrawLine(sx, sy, ex, ey, r, g, b);
-	}
+	}*/
 
 	//------------------------------------------------------------------------
 	// Example Triangle Drawing.
@@ -425,6 +477,6 @@ void Shutdown()
 {
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
-	delete testSprite;
+	//delete testSprite;
 	//------------------------------------------------------------------------
 }

@@ -1,7 +1,7 @@
 #include "Player.h"
 
 Mat4<float> Player::GetViewMatrix() {
-	c.SetPosition(m_position + Vec3<float>(0, m_eyeHeight, 0));
+	c.SetPosition(m_position + Vec3<float>(0, -m_eyeHeight, 0));
 	return c.GetViewMatrix();
 }
 

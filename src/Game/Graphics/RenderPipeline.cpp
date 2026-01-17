@@ -14,9 +14,47 @@ RenderPipeline& RenderPipeline::GetInstance() {
     return m_instance;
 }
 
+namespace {
+    // Some helper functions
+    ProjectionVertex InterpolateProjectionVertex(const ProjectionVertex& outVert, const ProjectionVertex& inVert) {
+        // ProjectionVertex only has colour, and position as we are dealing with simply vertex colours which we shade before hand.
+        Vec4<float> outPos = outVert.GetClipPosition();
+        Vec4<float> inPos = inVert.GetClipPosition();
+
+        float interp = (-outPos.z) / (inPos.z - outPos.z);
+        Vec4<float> clippedPos = ((inPos - outPos) * interp) + outPos;
+
+        return ProjectionVertex(clippedPos, outVert.GetColour());
+    }
+
+    // Need to create 2 interpolated points. So when using this function, attempt to maintain CCW ordering.
+    void NearClipOneVert(std::vector<ProjectionVertex>& clipVertices, const ProjectionVertex& outVert, const ProjectionVertex& inVert1, const ProjectionVertex& inVert2) {
+        ProjectionVertex clippedVert1 = InterpolateProjectionVertex(outVert, inVert1);
+        ProjectionVertex clippedVert2 = InterpolateProjectionVertex(outVert, inVert2);
+
+        clipVertices.push_back(inVert1);
+        clipVertices.push_back(inVert2);
+        clipVertices.push_back(clippedVert2);
+        
+        clipVertices.push_back(inVert1);
+        clipVertices.push_back(clippedVert2);
+        clipVertices.push_back(clippedVert1);
+    }
+
+    void NearClipTwoVerts(std::vector<ProjectionVertex>& clipVertices, const ProjectionVertex& outVert1, const ProjectionVertex& outVert2, const ProjectionVertex& inVert) {
+        ProjectionVertex clippedVert1 = InterpolateProjectionVertex(outVert1, inVert);
+        ProjectionVertex clippedVert2 = InterpolateProjectionVertex(outVert2, inVert);
+
+        clipVertices.push_back(inVert);
+        clipVertices.push_back(clippedVert1);
+        clipVertices.push_back(clippedVert2);
+    }
+
+}
+
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
 constexpr bool wireframe = false;
-void RenderPipeline::Render(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices, const ModelAttributes& modelAttributes) const {
+void RenderPipeline::Render(const std::vector<Vertex>& vertices, const Mat4<float>& modelMatrix, const Mat4<float>& ViewMatrix, const Colour& col) const {
     // Pretend Camera and Lights [DOING]
     //Mat4<float> cameraView = Mat4<float>::GetIdentity();
 
@@ -32,13 +70,12 @@ void RenderPipeline::Render(const std::vector<Vertex>& vertices, const std::vect
 
     // ---- Object -> Model -> view transform Vertex Process ---- [DONE]
     std::vector<ViewVertex> viewVerts;
-    viewVerts.reserve(indices.size());
+    viewVerts.reserve(vertices.size());
 
-    for (uint32_t i : indices) {
-        const Vertex& v = vertices[i];
+    for (const Vertex& v : vertices) {
 
         // Apply MV properly with copy of v. -> new object: ViewVertex, which we use to assemble a triangle TriOut or Triangle?
-        viewVerts.push_back(ProcessVertex(v, modelAttributes.modelMatrix, camera.GetViewMatrix()));
+        viewVerts.push_back(ProcessVertex(v, modelMatrix, ViewMatrix));
     }
 
     int breakA = 1;
@@ -91,22 +128,6 @@ void RenderPipeline::Render(const std::vector<Vertex>& vertices, const std::vect
     }
 
 
-    // ---- Screen-size Estimation [TODO] ----
-    /*
-    Here is how I have been reading it. THe simplistic approach is in some way estimate the edge lengths in screen space
-    with some form of either applying the projection matrix to get screen size, or some form of estimate. Get the max edge
-    between the 3 vertices of the triangle given, and if it's too large, then we do a midpoint subidviision to go from 
-    1 tri -> 4 triangles, and do that a certain amount of times recursively. Let's see if there is a better algorithm
-    that is perhaps more performant, need to see.
-
-    ------- Reyes algorithms --------
-
-    */
-
-    // ---- Dynamic tessellation [TODO] -> should output triangles, not vertices ---- (SHould take in triangles and output more triangles)
-        // Don't forget to cache LOD, and try to ensure not to have swimming/gaps in edges of shared triangles with different outer edge levels
-
-
     // ---- Displacement mapping [TODO] ----
         // Re-compute normals
         // Re-test frustum
@@ -128,7 +149,8 @@ void RenderPipeline::Render(const std::vector<Vertex>& vertices, const std::vect
             v1.SetColour(m.map_Kd->SampleNearest(v1.GetUV()));
             v2.SetColour(m.map_Kd->SampleNearest(v2.GetUV()));
             */
-        v.SetColour(modelAttributes.material->map_Kd->SampleBilinear(v.GetUV()));
+        //v.SetColour(modelAttributes.material->map_Kd->SampleBilinear(v.GetUV()));
+        v.SetColour(col);
         int t = 0;
 
         ///*\
@@ -148,15 +170,83 @@ void RenderPipeline::Render(const std::vector<Vertex>& vertices, const std::vect
     int breakB = 1;
 
     // ---- ClipSpace Cull & near-plane clipping [TODO] -> do before perspective divide. ----
+    std::vector<ProjectionVertex> clippedVertices;
+    clippedVertices.reserve(projectionVertices.size());
 
+    for (int i = 0; i < projectionVertices.size(); i += 3) {
+        const ProjectionVertex& v0 = projectionVertices[i];
+        Vec4<float> pos0 = v0.GetClipPosition();
+
+        const ProjectionVertex& v1 = projectionVertices[i + 1];
+        Vec4<float> pos1 = v1.GetClipPosition();
+
+        const ProjectionVertex& v2 = projectionVertices[i + 2];
+        Vec4<float> pos2 = v2.GetClipPosition();
+
+        // Check if triangle is fully outside planes:
+        bool near0 = pos0.z < -pos0.w;
+        bool near1 = pos1.z < -pos1.w;
+        bool near2 = pos2.z < -pos2.w;
+
+        // Near
+        if (near0 && near1 && near2) {
+            continue;
+        }
+        // Far
+        if (pos0.z > pos0.w && pos1.z > pos1.w && pos2.z > pos2.w) {
+            continue;
+        }
+        // Left
+        if (pos0.x < -pos0.w && pos1.x < -pos1.w && pos2.x < -pos2.w) {
+            continue;
+        }
+        // Right
+        if (pos0.x > pos0.w && pos1.x > pos1.w && pos2.x > pos2.w) {
+            continue;
+        }
+        // Bottom
+        if (pos0.y < -pos0.w && pos1.y < -pos1.w && pos2.y < -pos2.w) {
+            continue;
+        }
+        // Top
+        if (pos0.y > pos0.w && pos1.y > pos1.w && pos2.y > pos2.w) {
+            continue;
+        }
+
+        if (!near0 && !near1 && !near2) {
+            clippedVertices.insert(clippedVertices.end(), { v0, v1, v2 });
+            continue;
+        }
+
+
+        // Near clipping - find which vertices are partially outside of the plane at this point while maintaining CCW (paint is my saviour)
+        if (near0 && near1) {
+            NearClipTwoVerts(clippedVertices, v0, v1, v2);
+        }
+        else if (near1 && near2) {
+            NearClipTwoVerts(clippedVertices, v1, v2, v0);
+        }
+        else if (near0 && near2) {
+            NearClipTwoVerts(clippedVertices, v2, v0, v1);
+        }
+        else if (near0) {
+            NearClipOneVert(clippedVertices, v0, v1, v2);
+        }
+        else if (near1) {
+            NearClipOneVert(clippedVertices, v1, v2, v0);
+        }
+        else if (near2) {
+            NearClipOneVert(clippedVertices, v2, v0, v1);
+        }
+    }
 
     // ---- Perspective Divide----[DONE]
     // ---- Viewport mapping ----[DONE]
         // Reject degenerate triangles/zero-area triangles [TODO]
     std::vector<ScreenSpaceVertex> finalVertices;
-    finalVertices.reserve(projectionVertices.size());
+    finalVertices.reserve(clippedVertices.size());
     
-    for (const ProjectionVertex& v : projectionVertices) {
+    for (const ProjectionVertex& v : clippedVertices) {
         finalVertices.push_back(HomogenizeAndViewportMap(v));
     }
     int breakC = 1;
