@@ -2,7 +2,7 @@
 // Filename: GameTest.cpp
 // Provides a demo of how to use the API
 ///////////////////////////////////////////////////////////////////////////////
-/*
+
 #if BUILD_PLATFORM_WINDOWS
 //------------------------------------------------------------------------
 #include <windows.h> 
@@ -51,7 +51,7 @@ enum
 Vec3<float> t3;
 Vec4<float> t4;
 Quaternion q;
-Mat4<float> m;* /
+Mat4<float> m;*/
 
 //m.Print();
 //q.Print();
@@ -100,7 +100,7 @@ ModelEdge q2Edges;
 void Init()
 {
 	/*alignas(16) float o[4] = {1.f, 2.f, 3.f, 4.f};
-	__m128 veca = _mm_load_ps(o);* / // SIMD for SSE x86, need to worry about mac os as well.
+	__m128 veca = _mm_load_ps(o);*/ // SIMD for SSE x86, need to worry about mac os as well.
 	windowSize = { WINDOW_WIDTH, WINDOW_HEIGHT };
 	App::GetMousePos(mX, mY);
 	mousePos = { mX, mY };
@@ -115,7 +115,7 @@ void Init()
 	/*for (int i = 0; i < 1966; ++i) {
 		indices.push_back(i);
 		randV.push_back(Vertex(1, 2, 3));
-	}* /
+	}*/
 
 	//bunny = ObjectLoader::Load("./data/Models/Bunny/stanford-bunny.obj");
 	//bunny.Translate(0, 0, -2);
@@ -156,7 +156,7 @@ void Init()
 		bunnyIndices.push_back(i);
 	}
 
-	ma.modelMatrix = bunny.GetModelMatrix();* /
+	ma.modelMatrix = bunny.GetModelMatrix();*/
 	//------------------------------------------------------------------------
 	// Example Sprite Code....
 	testSprite = App::CreateSprite("./data/TestData/Test.bmp", 8, 4);
@@ -274,7 +274,7 @@ void Update(const float deltaTime)
 	// This whole issue is due to the type of pipeline naming, need to share the same camera between pipelines....
 
 	// Mouse rotation
-	/*Need to make all of this compatible with a controller as well! FOr movements and looking and jumping etc, should have a switch statement to handle either scenario* /
+	/*Need to make all of this compatible with a controller as well! FOr movements and looking and jumping etc, should have a switch statement to handle either scenario*/
 	App::GetMousePos(mX, mY);
 	diff = Vec2<float>(mX, mY) - mousePos;
 	mousePos = { mX, mY };
@@ -348,10 +348,10 @@ void Render()
 	//p.Render(q.GetVertices(), q.GetVertexIds(), q.GetModelAttributes());
 
 
-	/* MAIN PIPELINE * /
+	/* MAIN PIPELINE */
 	//p.Render(bunnyVerts, bunnyIndices, ma);
 	//p.Render(foxVerts, foxIndices, ma);
-	/* TESSELLATED PIPELINE * / // Don't forget I need to share cameras.
+	/* TESSELLATED PIPELINE */ // Don't forget I need to share cameras.
 	//p.Render(fox.GetMeshes(), fox.GetModelMatrix(), fox.GetAdjacencyTable());
 	p.Render(quadMeshes, q.GetModelMatrix(), quadEdges);
 	p.Render(q2Meshes, q2.GetModelMatrix(), q2Edges);
@@ -427,4 +427,4 @@ void Shutdown()
 	// Example Sprite Code....
 	delete testSprite;
 	//------------------------------------------------------------------------
-}*/
+}

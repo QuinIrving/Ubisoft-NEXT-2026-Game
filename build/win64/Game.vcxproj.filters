@@ -1,6 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Entities\Player\Player.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Game.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\GameTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -11,6 +17,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Pipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\RenderPipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Texture.cpp">
@@ -26,6 +35,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Math\Quaternion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Movement\Movement.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Objects\Model.cpp">
@@ -48,6 +60,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Entities\Player\Player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -64,6 +79,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ProjectionVertex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\RenderPipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Graphics\ScreenSpaceVertex.h">
@@ -112,6 +130,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Math\Vec4.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Movement\Movement.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Objects\Mesh.h">

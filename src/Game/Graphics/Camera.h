@@ -15,6 +15,8 @@ public:
 	void Translate(float x, float y, float z);
 	void Translate(const Vec3<float>& v);
 
+	void SetPosition(Vec3<float> pos) { m_position = Vec4<float>(pos); }
+
 	Quaternion GetRotation() const { return m_rotation; }
 	Vec4<float> GetPosition() const { return m_position; }
 	Vec2<float> GetPitchYaw() const { return { m_pitch, m_yaw }; }
