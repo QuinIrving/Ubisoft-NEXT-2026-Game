@@ -7,6 +7,7 @@
 #include "ProjectionVertex.h"
 #include "ScreenSpaceVertex.h"
 #include "Triangle.h"
+#include <algorithm>
 
 RenderPipeline& RenderPipeline::GetInstance() {
     static RenderPipeline m_instance; // thread safe
@@ -15,6 +16,14 @@ RenderPipeline& RenderPipeline::GetInstance() {
 }
 
 namespace {
+    struct DirectionalLight {
+        Vec3<float> direction = Vec3<float>(-0.5f, -0.8f, -0.6f).Normalize();
+        float intensity = 2.f;
+        Colour colour{ 1.0f, 0.98f, 0.95f, 1.f };
+    };
+
+    DirectionalLight worldLight{};
+
     // Some helper functions
     ProjectionVertex InterpolateProjectionVertex(const ProjectionVertex& outVert, const ProjectionVertex& inVert) {
         // ProjectionVertex only has colour, and position as we are dealing with simply vertex colours which we shade before hand.
@@ -150,7 +159,32 @@ void RenderPipeline::Render(const std::vector<Vertex>& vertices, const Mat4<floa
             v2.SetColour(m.map_Kd->SampleNearest(v2.GetUV()));
             */
         //v.SetColour(modelAttributes.material->map_Kd->SampleBilinear(v.GetUV()));
-        v.SetColour(col);
+        Vec3<float> N = v.GetWorldNormal().GetNormalized();
+        Vec3<float> L = worldLight.direction;
+        float lambertianReflectance = std::max<float>(0.2f, N.DotProduct(L));
+        lambertianReflectance *= worldLight.intensity;
+
+        Vec3<float> albedo = col.GetVectorizedRGB();
+        Vec3<float> lightCol = worldLight.colour.GetVectorizedRGB();
+
+        //Vec3<float> lightRGB = (col * lambertianReflectance).GetVectorizedRGB();
+        Vec3<float> rgb = albedo * lightCol * lambertianReflectance;
+
+        rgb *= 0.6f;
+        float a = 2.51f;
+        float b = 0.03f;
+        float C = 2.43f;
+        float d = 0.59f;
+        float e = 0.14f;
+
+        rgb = (rgb * (rgb * a + b)) / (rgb * (rgb * C + d) + e);
+
+        rgb.x = std::clamp(rgb.x, 0.0f, 1.0f);
+        rgb.y = std::clamp(rgb.y, 0.0f, 1.0f);
+        rgb.z = std::clamp(rgb.z, 0.0f, 1.0f);
+
+
+        v.SetColour({rgb.x, rgb.y, rgb.z, 1.f});
         int t = 0;
 
         ///*\

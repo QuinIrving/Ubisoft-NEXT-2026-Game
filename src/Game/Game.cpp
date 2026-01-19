@@ -127,6 +127,11 @@ void Init()
 
 	world.quads.push_back(Quad(1, 1, 200, Vec4<float>(1.f, 0.f, 0.f, 1.f)));
 	world.quads.push_back(Quad(1, 10, 10, Vec4<float>(1.f, 0.f, 0.f, 1.f)));
+	world.boids.push_back(Boid());
+
+	for (int i = 0; i < 20; ++i) {
+		world.boids.push_back(Boid());
+	}
 
 	/*
 	moveForward = true;
@@ -170,16 +175,24 @@ void Init()
 	world.quads[5].Translate(170.f, 25, 0.f);
 
 	//q1.Scale(50, 50, 0);
-	world.quads[0].Rotate(30, 0, 0);
+	//world.quads[0].Rotate(30, 0, 0);
+	world.quads[0].Rotate(90, 0, 0);
 	world.quads[1].Rotate(30, 0, 0);
 	world.quads[2].Rotate(30, 0, 0);
 	world.quads[3].Rotate(90, 0, 0);
 
 	world.quads[4].Rotate(-30, 0, 0);
-	world.quads[5].Rotate(0, 90, 0);
-	world.quads[5].Rotate(240, 0, 0);
+	world.quads[5].Rotate(0, -90, 0);
+	world.quads[5].Rotate(-240, 0, 0);
 
-	world.player.SetPosition({ -24, 45, 0 });
+
+	for (Boid& b : world.boids) {
+		b.Translate(FRAND_RANGE(0.f, 200.f), FRAND_RANGE(0.f, 40.f), FRAND_RANGE(-50.f, 80.f));
+	}
+
+	world.boids[0].Translate(0, 5.f, 0);
+
+	world.player.SetPosition({ -24, 2.5f, 0 });
 	//q2Meshes.push_back(q2.GetMesh());
 	//q2Meshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
 
@@ -380,8 +393,28 @@ void Update(const float deltaTime)
 
 	MovementSystem::HandlePlayerMovement(world.player, Vec3<float>(moveRight, 0, moveForward), deltaSeconds);
 
+	for (Boid& b : world.boids) {
+		b.Update(world.boids, deltaSeconds);
+		Vec3<float> t = b.GetTranslation();
+		if (t.x > 200.f || t.x < 0.f || t.y > 100.f || t.y < 0.f || t.z > 80.f || t.z < -50.f) {
+			b.SetPosition(FRAND_RANGE(0.f, 200.f), FRAND_RANGE(0.f, 40.f), FRAND_RANGE(-50.f, 80.f));
+		}
+	}
+
 	// collision detection section
 	Collision::ResolvePlayerCollision(world, deltaSeconds);
+
+
+	auto newVel = world.player.GetVelocity();
+	if (world.player.GetMoveState() == MovementState::GROUND && newVel.y < 0) {
+		// hacky solution but necessary for ramps to stand on If this doesn't work move on, we don't necessarily need ramps.
+		// lets also cut off the decimals here.
+
+		newVel.x = static_cast<int>(newVel.x);
+		newVel.y = 0.f;
+		world.player.SetVelocity(newVel);
+		// lets also cut off the decimals here.
+	}
 
 	// update position.
 	world.player.UpdatePosition(world.player.GetVelocity() * deltaSeconds);
@@ -410,7 +443,11 @@ void Render()
 	p.Render(world.quads[3].GetVertices(), world.quads[3].GetModelMatrix(), world.player.GetViewMatrix(), Colour(161 / 255.f, 57 / 255.f, 230 / 255.f, 1.f));
 	p.Render(world.quads[4].GetVertices(), world.quads[4].GetModelMatrix(), world.player.GetViewMatrix(), Colour(1.f, 57 / 255.f, 18 / 255.f, 1.f));
 	p.Render(world.quads[5].GetVertices(), world.quads[5].GetModelMatrix(), world.player.GetViewMatrix(), Colour(1.f, 1.f, 1.f, 1.f));
-	
+
+	for (Boid& b : world.boids) {
+		p.Render(b.GetVertices(), b.GetModelMatrix(), world.player.GetViewMatrix(), b.GetColour());
+	}
+	//p.Render(world.boids[0].GetVertices(), world.boids[0].GetModelMatrix(), world.player.GetViewMatrix(), world.boids[0].GetColour());
 	
 	/* MAIN PIPELINE */
 	//p.Render(bunnyVerts, bunnyIndices, ma);

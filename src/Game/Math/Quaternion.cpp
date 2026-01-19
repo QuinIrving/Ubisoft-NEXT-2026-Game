@@ -127,3 +127,89 @@ Quaternion& Quaternion::Normalize() {
 void Quaternion::Print() const {
 	m_delta.Print();
 }
+
+Quaternion Quaternion::FromTo(const Vec3<float>& from, const Vec3<float>& to) {
+	Vec3<float> f = from.GetNormalized();
+	Vec3<float> t = to.GetNormalized();
+
+	// Finds how much in the direction of "to", that "from" already is.
+	float fromProjTo = f.DotProduct(t);
+	Vec3<float> rotationAxis;
+
+	// Check if we're already pointing in direction of to.
+	if (fromProjTo >= 1.f - EPSILON) {
+		return Quaternion(0, 0, 0, 1);
+	}
+
+	// Check if we are facing opposite direction
+	if (fromProjTo <= -1.f + EPSILON) {
+		
+		rotationAxis = Vec3<float>(1, 0, 0).CrossProduct(f);
+
+		// If we are essentially pointing in the same direction as the axis, lets use a different axis
+		if (rotationAxis.GetMagnitudeSquared() < EPSILON) {
+			rotationAxis = Vec3<float>(0, 1, 0).CrossProduct(f);
+		}
+
+		rotationAxis.Normalize();
+		return Quaternion(rotationAxis, PI); // rotate 180 degs
+	}
+	
+	rotationAxis = f.CrossProduct(t);
+	float s = std::sqrtf((1 + fromProjTo) * 2);
+	float invs = 1 / s;
+	rotationAxis *= invs;
+	return Quaternion(rotationAxis.x, rotationAxis.y, rotationAxis.z, s * 0.5f);
+}
+
+Quaternion Quaternion::Slerp(Quaternion q1, Quaternion q2, float time) {
+	
+	Vec4<float> delta1 = q1.m_delta;
+	Vec4<float> delta2 = q2.m_delta;
+	float q1InQ2 = (delta1).DotProduct(delta2);
+
+	if (q1InQ2 < 0.f) {
+		delta2 = -delta2;
+	}
+
+	if (q1InQ2 < 1.f - EPSILON) {
+		return Quaternion((delta1 + (delta2 - delta1) * time).GetNormalized());
+	}
+
+	float theta = std::acosf(q1InQ2);
+	float sinv = 1.f / std::sin(theta);
+	float weight1 = std::sinf((1 - time) * theta) * sinv;
+	float weight2 = std::sinf(time * theta) * sinv;
+
+	return Quaternion((delta1 * weight1 + delta2 * weight2).GetNormalized());
+
+	// similar to our physics we are focused on time between 0-1
+	/*if (time <= 0) {
+		return q1;
+	}
+
+	if (time >= 1) {
+		return q2;
+	}
+
+	// How close q1 is to q2 in rotation direction
+	float q1ProjQ2 = q1.m_delta.DotProduct(q2.m_delta);
+	Quaternion q2b = q2;
+
+	if (q1ProjQ2 < 0.f) {
+		q2b.m_delta = -q2b.m_delta; // take shorter path
+		q1ProjQ2 = -q1ProjQ2;
+	}
+
+	if (q1ProjQ2 > 1.f - EPSILON) {
+		// linear fall back
+		Vec4<float> result = q1.m_delta + (q2b.m_delta - q1.m_delta) * time;
+		return Quaternion(result).Normalize();
+	}
+
+	float theta = acos(q1ProjQ2); // angle between quaternions
+	float intervalTheta = theta * time;
+
+	Quaternion q3 = Quaternion(q2b.m_delta - q1.m_delta * q1ProjQ2).Normalize();
+	return Quaternion(q1.m_delta * cos(theta) + q3.m_delta * sin(theta)).Normalize();*/
+}

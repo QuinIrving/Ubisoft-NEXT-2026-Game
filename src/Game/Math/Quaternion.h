@@ -31,6 +31,12 @@ public:
 
 	Quaternion& Normalize();
 
+	Quaternion operator*(float scale) const { Quaternion(m_delta * scale); }
+
+	// For our boids:
+	static Quaternion FromTo(const Vec3<float>& from, const Vec3<float>& to);
+	static Quaternion Slerp(Quaternion q1, Quaternion q2, float delta);
+
 	void Print() const;
 
 private:

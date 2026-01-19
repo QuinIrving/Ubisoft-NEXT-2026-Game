@@ -81,6 +81,20 @@ struct Intersection {
 
 
 namespace {
+    struct Tri {
+        Vec3<float> v0;
+        Vec3<float> v1;
+        Vec3<float> v2;
+
+        Tri(Vec3<float> v0, Vec3<float> v1, Vec3<float> v2) : v0(v0), v1(v1), v2(v2) {};
+
+        /*Vertex v0;
+        Vertex v1;
+        Vertex v2;
+
+        Tri(Vertex v0, Vertex v1, Vertex v2) : v0(v0), v1(v1), v2(v2) {};*/
+    };
+
     bool Intersects(const AABB& a, const AABB& b) {
         bool xNotAligned = (a.max.x < b.min.x || a.min.x > b.max.x);
         bool yNotAligned = (a.max.y < b.min.y || a.min.y > b.max.y);
@@ -95,6 +109,32 @@ namespace {
         float dy = std::min<float>(a.max.y - b.min.y, b.max.y - a.min.y);
         float dz = std::min<float>(a.max.z - b.min.z, b.max.z - a.min.z);
         return { dx, dy, dz };
+    }
+
+    bool SweptRayIntersectTri(const Vec3<float>& point, const Vec3<float>& dir, const Tri& tri, const Vec3<float>& halfExtents, Intersection& result) {
+        Vec3<float> triNormal = (tri.v1 - tri.v0).CrossProduct(tri.v2 - tri.v0).Normalize();
+
+        // Ray from player center to end
+        //Vec3<float> rayDir = endPos - pPos;
+        float offset = std::abs(triNormal.x * halfExtents.x) +
+            std::abs(triNormal.y * halfExtents.y) +
+            std::abs(triNormal.z * halfExtents.z);
+
+        Vec3<float> planePoint = tri.v0 + triNormal * offset;
+
+        // Solve ray-plane intersection
+        float denom = triNormal.DotProduct(dir);
+        if (fabs(denom) < EPSILON) return false; // parallel
+
+        float tPlane = (planePoint - point).DotProduct(triNormal) / denom;
+        if (tPlane < -0.01f || tPlane > 1.f) return false; // outside frame
+
+        // Intersection point
+        Vec3<float> hitPoint = point + dir * tPlane;
+
+        result.time = tPlane;
+        result.worldNormal = triNormal;
+        return true;
     }
 
     bool SweptRayIntersectOBB(const Vec3<float>& point, const Vec3<float>& dir, const OBB& box, float delta, Intersection& result) {
@@ -121,6 +161,7 @@ namespace {
         Vec3<float> max = box.halfEdges;
 
         Vec3<float> sweepDir = dir;// * delta;
+        
 
         float tMin = 0.f;
         //float tMin = -FLT_MAX;
@@ -177,14 +218,22 @@ namespace {
         else {
             result.time = tMin;
         }*/
+        
+        /*if (tMax < 0.f) {
+            return false;
+        }*/
 
         Vec3<float> hitNormal = { 0, 0, 0 };
         if (hitAxis == -1) {
             // just make up be our access if we're inside an object
             hitAxis = 1;
         }
+
         hitNormal[hitAxis] = hitSign;
+        //result.time = std::max<float>(tMin, 0.0f);
         result.worldNormal = hitNormal;
+        result.time = -FLT_MAX;
+        //result.time = std::max<float>(0.f, tMin); // if this is set to -FLT_MAX, it works, most likely as we don't really slide and instead end up setting it to 0
 
         // we already know the center (origin), and the extent is simply b.max, as the origin is the center
 
@@ -210,11 +259,11 @@ namespace {
 }
 
 namespace Collision {
-    float MAX_WALKABLE_SLOPE_NORMAL = 0.7f; // ~45 degree angle is the steepest angle which we still consider a "floor"
+    float MAX_SLIDEABLE_SLOPE_NORMAL = 0.7f; // ~45 degree angle is the steepest angle which we still consider a "floor"
 
     void ResolvePlayerCollision(World& w, float delta) {
 
-        int MAX_ITERATIONS = 3;
+        int MAX_ITERATIONS = 6;
         int iteration = 0;
         Collide c;
 
@@ -246,7 +295,7 @@ namespace Collision {
             float velProj = currVel.DotProduct(c.collisionNormal);
 
             
-            if (c.collisionNormal.y > MAX_WALKABLE_SLOPE_NORMAL) {
+            if (c.collisionNormal.y > MAX_SLIDEABLE_SLOPE_NORMAL) {
                 p.TransitionMoveState(MovementState::GROUND());
                 p.ResetOffGroundTimer();
             }
@@ -261,17 +310,18 @@ namespace Collision {
                 Vec3<float> slideDir = c.collisionNormal * velProj;
                 Vec3<float> slideVel = currVel - slideDir;
 
-                
                 // snap if ground
-                if (c.collisionNormal.y > MAX_WALKABLE_SLOPE_NORMAL && slideVel.y < 0) {
+                if (c.collisionNormal.y > MAX_SLIDEABLE_SLOPE_NORMAL && slideVel.y < 0) {
                     slideVel.y = 0;
                 }
-
+                
                 // CS-Surf PORTION:
                 float adjust = slideVel.DotProduct(c.collisionNormal);
                 if (adjust > 0.f) {
                     slideVel -= (c.collisionNormal * adjust);
                 }
+
+                
 
                 p.SetVelocity(slideVel);
             }
@@ -290,6 +340,7 @@ namespace Collision {
 
         Vec3<float> pPos = p.GetPosition() + Vec3<float>(0, c.radius + (c.height / 2), 0);
         Vec3<float> pSize = { c.radius * 2, c.radius * 2 + c.height, c.radius * 2 };
+        Vec3<float> pHalf = { c.radius, c.height * 0.5f + c.radius, c.radius };
 
         AABB playerBox = AABB(pPos, pSize);
 
@@ -305,7 +356,10 @@ namespace Collision {
 
             // since the quad's triangles are all on the same plane, we can simply check our two triangles on the plane.
             auto quadVerts = q.GetVertices();
+            Tri Tri1 = Tri(quadVerts[0].GetPosition() * q.GetModelMatrix(), quadVerts[1].GetPosition() * q.GetModelMatrix(), quadVerts[2].GetPosition() * q.GetModelMatrix());
+            Tri Tri2 = Tri(quadVerts[3].GetPosition() * q.GetModelMatrix(), quadVerts[4].GetPosition() * q.GetModelMatrix(), quadVerts[5].GetPosition() * q.GetModelMatrix());
 
+            /**/
             auto qScale = q.GetScale(); // for extending half-extents
             // m_delta.GetRotationMatrix()
             // Vec3<float> GetTranslation() { return m_position; }
@@ -363,6 +417,14 @@ namespace Collision {
 
             // now we have a ray, at start position pLocal, with direction vLocal.
             Intersection i;
+            /*bool didWeIntersect = SweptRayIntersectTri(pLocal, relativeVel, Tri1, delta, i);
+
+            Intersection i2;
+            didWeIntersect = SweptRayIntersectTri(pLocal, relativeVel, Tri2, delta, i2) || didWeIntersect;
+
+            if (i2.time < i.time) {
+                i = i2;
+            }*/
             bool didWeIntersect = SweptRayIntersectOBB(pLocal, relativeVel, quadOBB, delta, i);
 
             if (didWeIntersect) {

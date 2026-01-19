@@ -10,13 +10,13 @@ QuadMesh::QuadMesh(float width, float height, Vec4<float> colour) {
 	float hOver2 = (height / 2.f);
 
 
-	m_vertices.push_back(Vertex({ -wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 0, 1 }, {}, 0.f, 1));
-	m_vertices.push_back(Vertex({ -wOver2, -hOver2, 0 }, colour, { 0, 0, 1 }, { 0, 0 }, {}, 0.f, 0)); 
-	m_vertices.push_back(Vertex({ wOver2, -hOver2, 0 }, colour, { 0, 0, 1 }, { 1, 0 }, {}, 0.f, 2));
+	m_vertices.push_back(Vertex({ -wOver2, hOver2, 0 }, colour, { 0, 0, -1 }, { 0, 1 }, {}, 0.f, 1));
+	m_vertices.push_back(Vertex({ -wOver2, -hOver2, 0 }, colour, { 0, 0, -1 }, { 0, 0 }, {}, 0.f, 0)); 
+	m_vertices.push_back(Vertex({ wOver2, -hOver2, 0 }, colour, { 0, 0, -1 }, { 1, 0 }, {}, 0.f, 2));
 
-	m_vertices.push_back(Vertex({wOver2, -hOver2, 0}, colour, {0, 0, 1}, {1, 0}, {}, 0.f, 2));
-	m_vertices.push_back(Vertex({ wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 1, 1 }, {}, 0.f, 3));
-	m_vertices.push_back(Vertex({ -wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 0, 1 }, {}, 0.f, 1));
+	m_vertices.push_back(Vertex({wOver2, -hOver2, 0}, colour, {0, 0, -1}, {1, 0}, {}, 0.f, 2));
+	m_vertices.push_back(Vertex({ wOver2, hOver2, 0 }, colour, { 0, 0, -1 }, { 1, 1 }, {}, 0.f, 3));
+	m_vertices.push_back(Vertex({ -wOver2, hOver2, 0 }, colour, { 0, 0, -1 }, { 0, 1 }, {}, 0.f, 1));
 
 	m_vertices[0].SetMaterialIndex(0);
 	m_vertices[1].SetMaterialIndex(0);

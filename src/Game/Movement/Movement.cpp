@@ -108,8 +108,18 @@ void MovementSystem::HandlePlayerMovement(Player& p, Vec3<float> inputDir, float
 		}
 	}
 
+
 	p.UpdateOffGroundTimer(delta);
-	p.UpdateVelocity(Vec3<float>(0, -GRAVITY * delta, 0));
+	float yVel = -GRAVITY * delta;
+
+	/*if (p.GetMoveState() == MovementState::GROUND) {
+		yVel = 0.f;
+	}*/
+	
+	p.UpdateVelocity(Vec3<float>(0, yVel, 0));
+
+	
+
 	// collision should continue to update this back to 0, and set position, and movestate to ground
 
 	//update / transition right after(may need to swap these if it feels off)

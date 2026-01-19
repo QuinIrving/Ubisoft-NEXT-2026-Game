@@ -408,8 +408,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Objects\QuadMesh.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Physics\Collisions\Colliders.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Physics\Collisions\Collision.h" />
-    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Physics\Collisions\CollisionDetector.h" />
-    <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Physics\Collisions\CollisionResolver.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TessellatedPipeline.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TriangleContext.h" />
     <ClInclude Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TriangleNode.h" />
@@ -435,8 +433,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Objects\QuadMesh.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Physics\Collisions\Colliders.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Physics\Collisions\Collision.cpp" />
-    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Physics\Collisions\CollisionDetector.cpp" />
-    <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Physics\Collisions\CollisionResolver.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TessellatedPipeline.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TriangleContext.cpp" />
     <ClCompile Include="C:\Users\shaka\Downloads\UbisoftTorontoAPI_DEC102025Update\src\Game\Tessellation\TriangleNode.cpp" />
