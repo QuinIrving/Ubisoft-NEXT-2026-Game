@@ -155,11 +155,11 @@ Quaternion Quaternion::FromTo(const Vec3<float>& from, const Vec3<float>& to) {
 		return Quaternion(rotationAxis, PI); // rotate 180 degs
 	}
 	
-	rotationAxis = f.CrossProduct(t);
+	rotationAxis = t.CrossProduct(f);
 	float s = std::sqrtf((1 + fromProjTo) * 2);
 	float invs = 1 / s;
 	rotationAxis *= invs;
-	return Quaternion(rotationAxis.x, rotationAxis.y, rotationAxis.z, s * 0.5f);
+	return Quaternion(rotationAxis.x, rotationAxis.y, rotationAxis.z, s * 0.5f).Normalize();
 }
 
 Quaternion Quaternion::Slerp(Quaternion q1, Quaternion q2, float time) {
@@ -170,9 +170,10 @@ Quaternion Quaternion::Slerp(Quaternion q1, Quaternion q2, float time) {
 
 	if (q1InQ2 < 0.f) {
 		delta2 = -delta2;
+		q1InQ2 = -q1InQ2;
 	}
 
-	if (q1InQ2 < 1.f - EPSILON) {
+	if (q1InQ2 > 1.f - EPSILON) {
 		return Quaternion((delta1 + (delta2 - delta1) * time).GetNormalized());
 	}
 

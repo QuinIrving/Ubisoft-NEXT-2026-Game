@@ -263,7 +263,7 @@ namespace Collision {
 
     void ResolvePlayerCollision(World& w, float delta) {
 
-        int MAX_ITERATIONS = 6;
+        int MAX_ITERATIONS = 3;
         int iteration = 0;
         Collide c;
 
@@ -349,7 +349,7 @@ namespace Collision {
         collide.hasCollision = false;
         collide.time = FLT_MAX;
 
-        //OutputDebugString("\n");
+        
         // I will think of quad as an extremely thin AABB, Width and height are normal, while the z is the skinny portion.
         for (int idx = 0; idx < w.quads.size(); ++idx) {
             Quad& q = w.quads[idx];
@@ -437,6 +437,104 @@ namespace Collision {
                     collide.type = EntityType::QUAD;
                     collide.index = idx;
                     collide.collisionNormal = (i.worldNormal * qRot);
+                }
+            }
+
+        }
+
+        for (int idx = 0; idx < w.cube.GetWalls().size(); ++idx) {
+            Wall& q = w.cube.GetWalls()[idx];
+
+            // since the quad's triangles are all on the same plane, we can simply check our two triangles on the plane.
+            auto quadVerts = q.baseVerts;
+            Tri Tri1 = Tri(quadVerts[0].GetPosition(), quadVerts[1].GetPosition(), quadVerts[2].GetPosition());
+            Tri Tri2 = Tri(quadVerts[3].GetPosition(), quadVerts[4].GetPosition(), quadVerts[5].GetPosition());
+
+            /**/
+            //auto qScale = q.GetScale(); // for extending half-extents
+            // m_delta.GetRotationMatrix()
+            // Vec3<float> GetTranslation() { return m_position; }
+            //auto qTranslate = q.GetTranslation(); // for center position of quad. Technically since quad's center starts at origin, this should always simply be the center pos.
+
+            // apply scale then translate? Can create the correct matrices if needed.
+
+            //auto qRot = q.GetRotationMatrix(); // to put our point back to world space.
+            //auto qRotInverse = qRot.GetTranspose(); // to put our player to OBB space
+
+            //GetLocalHalfExtent for our quad extents, gives the width, height, and epsilon size, before scale is applied.
+
+
+            /*Vec3<float> localXAxis = {qRotInverse[0][0], qRotInverse[1][0], qRotInverse[2][0]};
+            Vec3<float> localYAxis = { qRotInverse[0][1], qRotInverse[1][1], qRotInverse[2][1] };
+            Vec3<float> localZAxis = { qRotInverse[0][2], qRotInverse[1][2], qRotInverse[2][2] };*/
+
+            Vec3<float> playerHalfExtents = pSize * 0.5f;
+
+            // 3. Project Player AABB onto the Quad's Local Axes
+            // We take the absolute dot product to get the maximum extent in that direction
+            /*float addedX = std::abs(localXAxis.x * playerHalfExtents.x) +
+                std::abs(localXAxis.y * playerHalfExtents.y) +
+                std::abs(localXAxis.z * playerHalfExtents.z);
+
+            float addedY = std::abs(localYAxis.x * playerHalfExtents.x) +
+                std::abs(localYAxis.y * playerHalfExtents.y) +
+                std::abs(localYAxis.z * playerHalfExtents.z);
+
+            float addedZ = std::abs(localZAxis.x * playerHalfExtents.x) +
+                std::abs(localZAxis.y * playerHalfExtents.y) +
+                std::abs(localZAxis.z * playerHalfExtents.z);
+
+
+            Vec3<float> scaledHalfExtents = q.GetLocalHalfExtent() * q.GetScale();*/
+            // Minkowski skum so we become a point instead of an AABB
+            //Vec3<float> wallExtents = (q.topRight - q.bottomLeft) * 0.5f;
+            Vec3<float> center = (q.bottomLeft + q.topRight) * 0.5f;
+            Vec3<float> wallExtents = {
+                std::max<float>(std::abs(q.topRight.x - q.bottomLeft.x) * 0.5f, 0.01f),
+                std::max<float>(std::abs(q.topRight.y - q.bottomLeft.y) * 0.5f, 0.01f),
+                std::max<float>(std::abs(q.topRight.z - q.bottomLeft.z) * 0.5f, 0.01f)
+            };
+            Vec3<float> combinedHalfExtents = wallExtents + playerHalfExtents;
+            //scaledHalfExtents += pSize * 0.5f;
+
+
+            OBB quadOBB = OBB(center, combinedHalfExtents, Mat4<float>());
+
+            Vec3<float> startPos = pPos;
+            Vec3<float> endPos = (startPos + p.GetVelocity() * delta);
+
+            // Maybe do the relative here, need to see the best method!.
+
+            Vec3<float> pLocal = (pPos - quadOBB.center);
+            Vec3<float> endLocal = (endPos - quadOBB.center);
+            //Vec3<float> velRelative = p.GetVelocity() - quad.GetVelocity(); // for whenever we have non-static geometry.
+            Vec3<float> relativeVel = (endLocal - pLocal) - Vec3<float>(0, 0, 0);
+            //Vec3<float> vLocal = relativeVel * qRotInverse;
+
+
+
+            // now we have a ray, at start position pLocal, with direction vLocal.
+            Intersection i;
+            /*bool didWeIntersect = SweptRayIntersectTri(pLocal, relativeVel, Tri1, delta, i);
+
+            Intersection i2;
+            didWeIntersect = SweptRayIntersectTri(pLocal, relativeVel, Tri2, delta, i2) || didWeIntersect;
+
+            if (i2.time < i.time) {
+                i = i2;
+            }*/
+            bool didWeIntersect = SweptRayIntersectOBB(pLocal, relativeVel, quadOBB, delta, i);
+
+            if (didWeIntersect) {
+                // rotate it to the correct spot.
+                //i.worldNormal = i.worldNormal * qRot;
+                collide.hasCollision = true;
+
+                if (i.time < collide.time) {
+                    collide.time = i.time;
+                    collide.type = EntityType::QUAD;
+                    collide.index = idx;
+                    collide.collisionNormal = (i.worldNormal);
                 }
             }
 

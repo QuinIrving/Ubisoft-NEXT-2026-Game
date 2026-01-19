@@ -121,17 +121,21 @@ void Init()
 	mousePos = { WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f };
 	glutSetCursor(GLUT_CURSOR_NONE);
 	world.player = Player();
+	/*
+	world.quads.insert(world.quads.end(), { Quad(1, 1, 100, Colour(FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, 1.f)), Quad(1, 1, 100, Colour(FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, 1.f)),
+		Quad(1, 1, 100, Colour(FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, 1.f)), Quad(1, 1, 100, Colour(FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, 1.f)) });
 
-	world.quads.insert(world.quads.end(), { Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f)), Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f)),
-		Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f)), Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f)) });
-
-	world.quads.push_back(Quad(1, 1, 200, Vec4<float>(1.f, 0.f, 0.f, 1.f)));
-	world.quads.push_back(Quad(1, 10, 10, Vec4<float>(1.f, 0.f, 0.f, 1.f)));
+	world.quads.push_back(Quad(1, 1, 200, Colour(FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, 1.f)));
+	world.quads.push_back(Quad(1, 10, 10, Colour(FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, FRAND_RANGE(0, 255) / 255.f, 1.f)));
 	world.boids.push_back(Boid());
-
-	for (int i = 0; i < 20; ++i) {
+	*/
+	/*for (int i = 0; i < 200; ++i) {
 		world.boids.push_back(Boid());
-	}
+	}*/
+	world.boidSwarm.push_back(Swarm(30));
+	world.boidSwarm.push_back(Swarm(35));
+
+	world.cube = LivingCube(100, 100, 100);
 
 	/*
 	moveForward = true;
@@ -166,7 +170,7 @@ void Init()
 	/*quadMeshes.push_back(q.GetMesh(TextureLoader::GenerateTextureTopology(t)));
 	*/
 	
-
+	/*
 	world.quads[0].Translate(0, 0.f, 0);
 	world.quads[1].Translate(120.f, 0, 0.f);
 	world.quads[2].Translate(50.f, 0, -50.f);
@@ -184,15 +188,15 @@ void Init()
 	world.quads[4].Rotate(-30, 0, 0);
 	world.quads[5].Rotate(0, -90, 0);
 	world.quads[5].Rotate(-240, 0, 0);
-
-
+	*/
+	/*
 	for (Boid& b : world.boids) {
 		b.Translate(FRAND_RANGE(0.f, 200.f), FRAND_RANGE(0.f, 40.f), FRAND_RANGE(-50.f, 80.f));
 	}
 
-	world.boids[0].Translate(0, 5.f, 0);
+	world.boids[0].Translate(0, 5.f, 0);*/
 
-	world.player.SetPosition({ -24, 2.5f, 0 });
+	world.player.SetPosition({ 10.f, 2.5f, 0 });
 	//q2Meshes.push_back(q2.GetMesh());
 	//q2Meshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
 
@@ -393,12 +397,29 @@ void Update(const float deltaTime)
 
 	MovementSystem::HandlePlayerMovement(world.player, Vec3<float>(moveRight, 0, moveForward), deltaSeconds);
 
-	for (Boid& b : world.boids) {
-		b.Update(world.boids, deltaSeconds);
-		Vec3<float> t = b.GetTranslation();
-		if (t.x > 200.f || t.x < 0.f || t.y > 100.f || t.y < 0.f || t.z > 80.f || t.z < -50.f) {
-			b.SetPosition(FRAND_RANGE(0.f, 200.f), FRAND_RANGE(0.f, 40.f), FRAND_RANGE(-50.f, 80.f));
+	/*for (Boid& b : world.boids) {
+		b.Update(world.boids, world.player.GetPosition(), deltaSeconds);
+		Vec3<float> t = b.GetPosition();
+		
+		if (t.x > 50.f) {
+			t.x = 1.f;
 		}
+		else if (t.x < 0.f) {
+			t.x = 49.f;
+		} if (t.y > 50.f) {
+			t.y = 1.f;
+		} else if (t.y < 0.f) {
+			t.y = 49.f;
+		} if (t.z > 50.f || t.z < -50.f) {
+			t.z = -t.z;
+			//b.SetPosition(FRAND_RANGE(0.f, 200.f), FRAND_RANGE(0.f, 40.f), FRAND_RANGE(-50.f, 80.f));
+		}
+
+		b.SetPosition(t.x, t.y, t.z);
+	}*/
+
+	for (Swarm& s : world.boidSwarm) {
+		s.Update(world.player.GetPosition(), deltaSeconds);
 	}
 
 	// collision detection section
@@ -406,7 +427,7 @@ void Update(const float deltaTime)
 
 
 	auto newVel = world.player.GetVelocity();
-	if (world.player.GetMoveState() == MovementState::GROUND && newVel.y < 0) {
+	if (world.player.GetMoveState() == MovementState::GROUND && newVel.y < 0 && moveRight == 0 && moveForward == 0) {
 		// hacky solution but necessary for ramps to stand on If this doesn't work move on, we don't necessarily need ramps.
 		// lets also cut off the decimals here.
 
@@ -425,8 +446,8 @@ void Update(const float deltaTime)
 	
 	if (world.player.GetPosition().y < -50.5f) {
 		world.player.SetVelocity({ 0, 0, 0 });
-		world.player.SetPosition({ -24, 45, 0 });
-		OutputDebugString("\n\nReset\n\n\n");
+		world.player.SetPosition({ 10, 10, 10 });
+		//OutputDebugString("\n\nReset\n\n\n");
 		//world.player.ResetOffGroundTimer();
 		//world.player.TransitionMoveState(MovementState::GROUND);
 	}
@@ -439,17 +460,31 @@ void Update(const float deltaTime)
 //------------------------------------------------------------------------
 void Render()
 {
+	for (Wall& w : world.cube.GetWalls()) {
+		p.Render(w.baseVerts, {}, world.player.GetViewMatrix(), w.col);
+	}
 	//world.render();
+	for (Quad& q : world.quads) {
+		p.Render(q.GetVertices(), q.GetModelMatrix(), world.player.GetViewMatrix(), q.GetColour());
+	}
+	/*
 	p.Render(world.quads[0].GetVertices(), world.quads[0].GetModelMatrix(), world.player.GetViewMatrix(), Colour(3 / 255.f, 219 / 255.f, 252 / 255.f, 1.f));
 	p.Render(world.quads[1].GetVertices(), world.quads[1].GetModelMatrix(), world.player.GetViewMatrix(), Colour(161 / 255.f, 57 / 255.f, 230 / 255.f, 1.f));
 	p.Render(world.quads[2].GetVertices(), world.quads[2].GetModelMatrix(), world.player.GetViewMatrix(), Colour(3 / 255.f, 219 / 255.f, 252 / 255.f, 1.f));
 	p.Render(world.quads[3].GetVertices(), world.quads[3].GetModelMatrix(), world.player.GetViewMatrix(), Colour(161 / 255.f, 57 / 255.f, 230 / 255.f, 1.f));
 	p.Render(world.quads[4].GetVertices(), world.quads[4].GetModelMatrix(), world.player.GetViewMatrix(), Colour(1.f, 57 / 255.f, 18 / 255.f, 1.f));
-	p.Render(world.quads[5].GetVertices(), world.quads[5].GetModelMatrix(), world.player.GetViewMatrix(), Colour(1.f, 1.f, 1.f, 1.f));
-
+	p.Render(world.quads[5].GetVertices(), world.quads[5].GetModelMatrix(), world.player.GetViewMatrix(), Colour(1.f, 1.f, 1.f, 1.f));*/
+	/*
 	for (Boid& b : world.boids) {
 		p.Render(b.GetVertices(), b.GetModelMatrix(), world.player.GetViewMatrix(), b.GetColour());
+	}*/
+
+	for (Swarm& s : world.boidSwarm) {
+		for (Boid& b : s.GetBoids()) {
+			p.Render(b.GetVertices(), b.GetModelMatrix(), world.player.GetViewMatrix(), b.GetColour());
+		}
 	}
+
 	//p.Render(world.boids[0].GetVertices(), world.boids[0].GetModelMatrix(), world.player.GetViewMatrix(), world.boids[0].GetColour());
 	
 	/* MAIN PIPELINE */

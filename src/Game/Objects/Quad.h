@@ -8,7 +8,7 @@
 
 class Quad {
 public:
-	Quad(float width = 1.f, float height = 1.f, float size = 1.f, Vec4<float> colour = {1.f, 1.f, 1.f, 1.f}); // Perhaps colour should be something in our material idea
+	Quad(float width = 1.f, float height = 1.f, float size = 1.f, Colour colour = {1.f, 1.f, 1.f, 1.f}); // Perhaps colour should be something in our material idea
 
 	// Want an ECS so need just making this as a placeholder for now to test my work until refactor time again
 	void Rotate(float x, float y, float z);
@@ -25,6 +25,7 @@ public:
 	Vec3<float> GetScale() { return m_scale; }
 	Vec3<float> GetLocalHalfExtent() { return Vec3<float>(m_width / 2.f, m_height / 2.f, 0.005f); }
 	Mat4<float> GetRotationMatrix() { return m_delta.GetRotationMatrix(); }
+	Colour GetColour() { return col; }
 
 	Material material;
 	//ModelAttributes m_attributes;
@@ -41,4 +42,5 @@ private:
 	QuadMesh m_mesh;
 	float m_width;
 	float m_height;
+	Colour col;
 };

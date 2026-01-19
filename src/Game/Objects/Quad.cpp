@@ -1,9 +1,9 @@
 #include "Quad.h"
 #include "Tessellation/TriangleNode.h"
 
-Quad::Quad(float width, float height, float size, Vec4<float> colour) {
+Quad::Quad(float width, float height, float size, Colour colour) : col(colour) {
 	Scale(size, size, size);
-	m_mesh = QuadMesh(width, height, colour);
+	m_mesh = QuadMesh(width, height, col.GetVectorizedRGBA());
 	m_width = width;
 	m_height = height;
 }
