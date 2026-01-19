@@ -410,7 +410,10 @@ void Update(const float deltaTime)
 		// hacky solution but necessary for ramps to stand on If this doesn't work move on, we don't necessarily need ramps.
 		// lets also cut off the decimals here.
 
-		newVel.x = static_cast<int>(newVel.x);
+		if (std::fabsf(newVel.x) < 0.3f) {
+			newVel.x = 0;//std::roundf(newVel.x);
+			newVel.z = 0;
+		}
 		newVel.y = 0.f;
 		world.player.SetVelocity(newVel);
 		// lets also cut off the decimals here.
