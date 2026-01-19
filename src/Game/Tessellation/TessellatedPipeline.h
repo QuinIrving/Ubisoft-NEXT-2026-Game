@@ -13,6 +13,8 @@
 #include "TriangleNode.h"
 #include "Objects/Model.h"
 
+// Another old pipeline
+
 /*
     Singleton (thread safe) Pipeline class for rendering.
     Handles vertices per mesh -> vertex shader -> clipping -> tessellation -> texture mapping & lighting -> call rasterization

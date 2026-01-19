@@ -11,6 +11,8 @@
 #include "Camera.h"
 #include <AppSettings.h>
 
+// Current one in USE! Sorry for my messy code whoever is reading this
+
 /*
     Singleton (thread safe) Pipeline class for rendering.
     Handles vertices per mesh -> vertex shader -> clipping -> tessellation -> texture mapping & lighting -> call rasterization

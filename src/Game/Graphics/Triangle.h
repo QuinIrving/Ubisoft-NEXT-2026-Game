@@ -7,6 +7,11 @@ public:
 		const Vec3<float> u = C - A;
 		const Vec3<float> v = B - A;
 
-		return Vec3<float>::CrossProduct(u, v).GetNormalized();
+		Vec3<float> cross = Vec3<float>::CrossProduct(u, v);
+		if (cross.GetMagnitudeSquared() > EPSILON) {
+			cross.Normalize();
+		}
+
+		return cross;
 	}
 };

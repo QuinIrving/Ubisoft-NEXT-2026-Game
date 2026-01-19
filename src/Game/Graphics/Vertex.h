@@ -7,14 +7,12 @@
 class Vertex {
 public:
 	Vertex() = default;
-	//Vertex(Vec3<float> pos) : m_position(pos) {}
 	Vertex(float x, float y, float z) : m_position({ x, y, z }) {}
 	constexpr Vertex(Vec3<float> pos, Vec4<float> col = { 1, 1, 1, 1 }, Vec3<float> norm = { 0, 0, 1 }, Vec2<float> uv = {}, Vec3<float> tan = {}, float tanW = 0.f, uint32_t meshIndex = -1) :
 		m_position(pos), m_colour(col), m_normal(norm), m_UV(uv), m_tangent(tan), m_tangentW(tanW), m_meshIndex(meshIndex) {}
 
 	Vec4<float> operator*(const Mat4<float>& rhs) const { return Vec4<float>(m_position) * rhs; }
 
-	//Vec3<float> GetPosition() const { return m_position; }
 	const Vec3<float>& GetPosition() const { return m_position; }
 	const Vec4<float>& GetColour() const { return m_colour; }
 	const Vec3<float>& GetNormal() const { return m_normal; }

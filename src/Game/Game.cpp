@@ -135,7 +135,10 @@ void Init()
 	world.boidSwarm.push_back(Swarm(30));
 	world.boidSwarm.push_back(Swarm(35));
 
-	world.cube = LivingCube(100, 100, 100);
+	world.cube = LivingCube(200, 200, 200);
+
+	world.bridges.push_back(Bridge({0, 20, 20}, { 0, 20, 40 }, {0, 40, 25}, BridgeClass::TriangularPrism, {1, 0, 0}, 15, 5.5)); // not going to be able to add ramps with this technique but oh well, maybe just spawn them in.
+	world.bridges.push_back(Bridge({ 20, 40, 0 }, { 40, 40, 0 }, { 20, 60, 0 }, BridgeClass::Box, { 0, 0, 1 }, 4, 10.5));
 
 	/*
 	moveForward = true;
@@ -242,69 +245,6 @@ void Update(const float deltaTime)
 	frames++;
 	
 	//------------------------------------------------------------------------
-	// Example Sprite Code....
-	//testSprite->Update(deltaTime);
-	/*if (App::GetController().GetLeftThumbStickX() > 0.5f)
-	{
-		testSprite->SetAnimation(ANIM_RIGHT);
-		float x, y;
-		testSprite->GetPosition(x, y);
-		x += 1.0f;
-		testSprite->SetPosition(x, y);
-	}
-	if (App::GetController().GetLeftThumbStickX() < -0.5f)
-	{
-		testSprite->SetAnimation(ANIM_LEFT);
-		float x, y;
-		testSprite->GetPosition(x, y);
-		x -= 1.0f;
-		testSprite->SetPosition(x, y);
-	}
-	if (App::GetController().GetLeftThumbStickY() > 0.5f)
-	{
-		testSprite->SetAnimation(ANIM_FORWARDS);
-		float x, y;
-		testSprite->GetPosition(x, y);
-		y += 1.0f;
-		testSprite->SetPosition(x, y);
-	}
-	if (App::GetController().GetLeftThumbStickY() < -0.5f)
-	{
-		testSprite->SetAnimation(ANIM_BACKWARDS);
-		float x, y;
-		testSprite->GetPosition(x, y);
-		y -= 1.0f;
-		testSprite->SetPosition(x, y);
-	}
-
-	if (App::GetController().CheckButton(App::BTN_DPAD_UP, false))
-	{
-		testSprite->SetScale(testSprite->GetScale() + 0.1f);
-		if (frames > 16) {
-			NodeDepth::MAX_DEPTH = std::min<int>(NodeDepth::MAX_DEPTH + 1, 20);
-			frames = 0;
-		}
-	}
-	if (App::GetController().CheckButton(App::BTN_DPAD_DOWN, false))
-	{
-		testSprite->SetScale(testSprite->GetScale() - 0.1f);
-		if (frames > 16) {
-			NodeDepth::MAX_DEPTH = std::max<int>(NodeDepth::MAX_DEPTH - 1, 0);
-			frames = 0;
-		}
-	}
-	if (App::GetController().CheckButton(App::BTN_DPAD_LEFT, false))
-	{
-		testSprite->SetAngle(testSprite->GetAngle() + 0.1f);
-	}
-	if (App::GetController().CheckButton(App::BTN_DPAD_RIGHT, false))
-	{
-		testSprite->SetAngle(testSprite->GetAngle() - 0.1f);
-	}
-	if (App::GetController().CheckButton(App::BTN_A, true))
-	{
-		testSprite->SetAnimation(-1);
-	}*/
 	//------------------------------------------------------------------------
 	// Sample Sound.
 	//------------------------------------------------------------------------
@@ -333,8 +273,6 @@ void Update(const float deltaTime)
 	if (!App::IsKeyPressed(App::KEY_ESC) && isEscapeDown) {
 		isEscapeDown = false;
 	}
-
-	// This whole issue is due to the type of pipeline naming, need to share the same camera between pipelines....
 
 	// Mouse rotation
 	/*Need to make all of this compatible with a controller as well! FOr movements and looking and jumping etc, should have a switch statement to handle either scenario*/
@@ -382,11 +320,11 @@ void Update(const float deltaTime)
 
 	if (App::GetController().CheckButton(App::BTN_X, false) && world.player.GetMoveState() != MovementState::AIR) {
 		// add an impulse to the y velocity, and set player as in air.
-		world.player.UpdateVelocity(Vec3<float>(0.f, 16.f, 0.f));
+		world.player.UpdateVelocity(Vec3<float>(0.f, MovementSystem::JUMP_IMPULSE, 0.f));
 		world.player.TransitionMoveState(MovementState::AIR);
 	}
 	else if (App::IsKeyPressed(App::KEY_SPACE) && world.player.GetMoveState() != MovementState::AIR) { // same for keyboard
-		world.player.UpdateVelocity(Vec3<float>(0.f, 16.f, 0.f));
+		world.player.UpdateVelocity(Vec3<float>(0.f, MovementSystem::JUMP_IMPULSE, 0.f));
 		world.player.TransitionMoveState(MovementState::AIR);
 	}
 
@@ -418,6 +356,10 @@ void Update(const float deltaTime)
 		b.SetPosition(t.x, t.y, t.z);
 	}*/
 
+	for (Bridge& b : world.bridges) {
+		b.Update(deltaSeconds, (Vec3<float>(world.cube.GetWidth(), world.cube.GetHeight(), world.cube.GetDepth()) * b.GetTranslateAxis()).GetMagnitude());
+	}
+
 	for (Swarm& s : world.boidSwarm) {
 		s.Update(world.player.GetPosition(), deltaSeconds);
 	}
@@ -447,9 +389,6 @@ void Update(const float deltaTime)
 	if (world.player.GetPosition().y < -50.5f) {
 		world.player.SetVelocity({ 0, 0, 0 });
 		world.player.SetPosition({ 10, 10, 10 });
-		//OutputDebugString("\n\nReset\n\n\n");
-		//world.player.ResetOffGroundTimer();
-		//world.player.TransitionMoveState(MovementState::GROUND);
 	}
 
 }
@@ -466,6 +405,14 @@ void Render()
 	//world.render();
 	for (Quad& q : world.quads) {
 		p.Render(q.GetVertices(), q.GetModelMatrix(), world.player.GetViewMatrix(), q.GetColour());
+	}
+
+	for (Bridge& b : world.bridges) {
+		if (b.state == BridgeState::Inactive) {
+			continue;
+		}
+
+		p.Render(b.GetVertices(), {}, world.player.GetViewMatrix(), { 1.f, 1.f, 1.f, 1.f });
 	}
 	/*
 	p.Render(world.quads[0].GetVertices(), world.quads[0].GetModelMatrix(), world.player.GetViewMatrix(), Colour(3 / 255.f, 219 / 255.f, 252 / 255.f, 1.f));
@@ -496,29 +443,6 @@ void Render()
 	//p.Render(q2Meshes, q2.GetModelMatrix(), q2Edges);
 	// DONE!!!
 	
-
-
-	//App::DrawTriangle(600.0f, 300.0f, -0.5f, 1, 650.0f, 400.0f, -0.5f, 1, 700.0f, 300.0f, -0.5f, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-	//p.Render(randV, indices, ModelAttributes());
-	//------------------------------------------------------------------------
-	// Example Sprite Code....
-	//testSprite->Draw();
-
-	/*float x, y;
-	App::GetMousePos(x, y);
-	char textBuffer[64];
-	snprintf(textBuffer, sizeof(textBuffer), "Mouse: (%f, %f)", x, y);
-	App::Print(10, APP_VIRTUAL_HEIGHT - 20, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
-	float controllerY = App::GetController().GetRightThumbStickY();
-	float controllerX = App::GetController().GetRightThumbStickX();
-
-	snprintf(textBuffer, sizeof(textBuffer), "Controller: (%f, %f)", controllerX, controllerY);
-	App::Print(10, APP_VIRTUAL_HEIGHT - 40, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
-
-	snprintf(textBuffer, sizeof(textBuffer), "Window: (%d, %d)", WINDOW_WIDTH, WINDOW_HEIGHT); // USE THIS VALUE FOR OUR AUTO-CHANGING PROJECTION MATRIX!
-	App::Print(10, APP_VIRTUAL_HEIGHT - 80, textBuffer, 0.2f, 0.55f, 0.98f, GLUT_BITMAP_HELVETICA_10);
-	*/
-
 	char textBuffer[64];
 	snprintf(textBuffer, sizeof(textBuffer), "Pos: (%f, %f, %f)", world.player.GetPosition().x, world.player.GetPosition().y, world.player.GetPosition().z);
 	App::Print(10, APP_VIRTUAL_HEIGHT - 20, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
@@ -540,42 +464,6 @@ void Render()
 	App::Print(10, APP_VIRTUAL_HEIGHT - 60, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
 
 	// Camera will use a fixed sensitivity (that in settings can be changed), while mouse will use raw input given + sensitivity for our camera input.
-
-	//------------------------------------------------------------------------
-
-	//------------------------------------------------------------------------
-	// Example Text.
-	//------------------------------------------------------------------------
-	//App::Print(100, 100, "Sample Text");
-
-	//------------------------------------------------------------------------
-	// Example Line Drawing.
-	//------------------------------------------------------------------------
-	/*static float a = 0.0f;
-	const float r = 1.0f;
-	float g = 1.0f;
-	float b = 1.0f;
-	a += 0.1f;
-	for (int i = 0; i < 20; i++)
-	{
-
-		const float sx = 200 + sinf(a + i * 0.1f) * 60.0f;
-		const float sy = 200 + cosf(a + i * 0.1f) * 60.0f;
-		const float ex = 700 - sinf(a + i * 0.1f) * 60.0f;
-		const float ey = 700 - cosf(a + i * 0.1f) * 60.0f;
-		g = (float)i / 20.0f;
-		b = (float)i / 20.0f;
-		//App::DrawLine(sx, sy, ex, ey, r, g, b);
-	}*/
-
-	//------------------------------------------------------------------------
-	// Example Triangle Drawing.
-	//------------------------------------------------------------------------
-	//App::DrawTriangle(600.0f, 300.0f, -1, 1, 650.0f, 400.0f, 0, 1, 700.0f, 300.0f, 0, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-	//App::DrawTriangle(500.0f, 300.0f, 0, 1, 550.0f, 450.0f, 0.5, 1, 700.0f, 340.0f, -0.5, 1, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
-	//App::DrawTriangle(800.0f, 300.0f, 0, 1, 850.0f, 400.0f, 0, 1, 900.0f, 300.0f, 0, 1, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, true);
-	//App::DrawTriangle(800.0f, 300.0f, 0, 1, 850.0f, 400.0f, 0, 1, 900.0f, 300.0f, 0, 1, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, true);
-	//App::DrawTriangle(320, 576, -0.5f, 1, 512, 384, -0.5f, 1, 704, 192, -0.5f, 1, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 0.f, 1.f, 0.f, false);
 }
 //------------------------------------------------------------------------
 // Add your shutdown code here. Called when the APP_QUIT_KEY is pressed.

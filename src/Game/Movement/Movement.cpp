@@ -6,9 +6,8 @@
 
 namespace {
 	// Our generic settings;
-	const float MAX_VELOCITY = 30.f;
-	const float GRAVITY = 20.0f;
-	const float JUMP_IMPULSE = 8.f;
+	const float MAX_VELOCITY = 40.f;
+	const float GRAVITY = 25.0f; // 20 was good
 	const float MAX_OFF_PLATFORM_ALLOWED_TIME = 0.15f; // in seconds
 	const float STOP_SPEED = 2.4f; // Ratio from CS: (75/250) * our ground speed of 8 instead.
 }
@@ -24,9 +23,6 @@ namespace AirSettings {
 	const float ACCELERATION = 50.f;
 	const float SPEED = GroundSettings::SPEED;
 	const float MAX_SURF_SPEED = 45.f;
-	//const float SPEED = 5.f;
-	//const float SPEED = 0.1f;
-	//const float DRAG = 0.1f;
 	const float DRAG = 0.1f;
 
 }

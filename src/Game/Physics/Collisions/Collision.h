@@ -32,6 +32,7 @@ struct Collide {
 	int index;
 	float time;
 	Vec3<float> collisionNormal;
+	Vec3<float> kinematicSurfaceVel = { 0.f, 0.f, 0.f };
 };
 
 namespace Collision {

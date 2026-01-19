@@ -68,20 +68,6 @@ struct TGAImage {
 
 namespace {
 	// Helper functions
-	/*Texture ProcessTGA_RGBA(std::string& path) {
-		return Texture();
-	}
-
-	Texture ProcessTGA_RGB(std::string& path) {
-		return Texture();
-	}
-
-	Texture ProcessTGA_BW(std::string& path) {
-		return Texture();
-	}*/
-
-	
-
 	void ReadRLE(std::ifstream& file, std::vector<uint8_t>& data, int channels) {
 		size_t pixelCount = data.size() / channels;
 		size_t currPixel = 0;
@@ -640,10 +626,6 @@ namespace {
 		*/
 		
 		std::vector<Colour> kuwaharaPixels;
-
-		/*for (const Colour& c : t.texels) {
-
-		}*/
 
 		//const int KERNEL_SIZE = 7;
 		const int KERNEL_SIZE = 5;
@@ -1659,119 +1641,6 @@ int FindTriangleContainingPoint(std::vector<Tri>& tris, std::vector<Vec2<long lo
 		}
 	}
 }
-
-/*
-int InsertPoint(int triIdx, int pIdx, std::vector<Tri>& tris, std::vector<Vec2<float>>& pts, std::stack<std::pair<int, int>>& stack) {
-	Tri old = tris[triIdx];
-
-	int a = old.vIndices[0];
-	int b = old.vIndices[1];
-	int c = old.vIndices[2];
-
-	int t0 = triIdx;
-	int t1 = tris.size();
-	int t2 = tris.size() + 1;
-
-	tris[t0] = Tri(pIdx, a, b, old.regionID);
-	tris.push_back(Tri(pIdx, b, c, old.regionID));
-	tris.push_back(Tri(pIdx, c, a, old.regionID));
-
-	//tris[t0].adjIndices = { old.adjIndices[2], t1, t2 };
-	//tris[t1].adjIndices = { old.adjIndices[0], t2, t0 };
-	tris[t0].adjIndices[0] = old.adjIndices[2];
-	tris[t0].adjIndices[1] = old.adjIndices[t1];
-	tris[t0].adjIndices[2] = old.adjIndices[t2];
-	
-	tris[t1].adjIndices[0] = old.adjIndices[0];
-	tris[t1].adjIndices[1] = old.adjIndices[t2];
-	tris[t1].adjIndices[2] = old.adjIndices[t0];
-
-	tris[t2].adjIndices[0] = old.adjIndices[1];
-	tris[t2].adjIndices[1] = old.adjIndices[t0];
-	tris[t2].adjIndices[2] = old.adjIndices[t1];
-
-	// Fix neighbours pointing to old triangle
-	auto fixAdj = [&](int n, int oldIdx, int newIdx) {
-		if (n < 0) {
-			return;
-		}
-
-		for (int i = 0; i < 3; ++i) {
-			if (tris[n].adjIndices[i] == oldIdx) {
-				tris[n].adjIndices[i] = newIdx;
-			}
-		}
-	};
-
-
-	fixAdj(old.adjIndices[0], triIdx, t1);
-	fixAdj(old.adjIndices[1], triIdx, t2);
-	fixAdj(old.adjIndices[2], triIdx, t0);
-
-	// Push opposite edges for legalization.
-	stack.push({ t0, 0 });
-	stack.push({ t1, 0 });
-	stack.push({ t2, 0 });
-
-	return t0;
-}*/
-
-/*
-void LegalizeTriangles(std::vector<Tri>& tris, std::vector<Vec2<double>>& points, std::stack<std::pair<int, int>>& stack) {
-	while (!stack.empty()) {
-		auto [triIdx, oppEdge] = stack.top();
-		stack.pop();
-
-		int adjIdx = tris[triIdx].adjIndices[oppEdge];
-		if (adjIdx == -1 || tris[triIdx].isConstrained[oppEdge]) {
-			continue;
-		}
-
-		int a = tris[triIdx].vIndices[oppEdge];
-		int b = tris[triIdx].vIndices[(oppEdge + 1) % 3];
-		int c = tris[triIdx].vIndices[(oppEdge + 2) % 3];
-
-		int opp = -1;
-		for (int i = 0; i < 3; ++i) {
-			if (tris[adjIdx].vIndices[i] != b && tris[adjIdx].vIndices[i] != c) {
-				opp = tris[adjIdx].vIndices[i];
-			}
-		}
-
-		if (!PointInCircle(points[b], points[c], points[a], points[opp])) {
-			continue;
-		}
-
-		// Perform edge flip
-		// (standard quad flip implementation)
-
-		// Push affected edges back on stack
-
-		// Opp vert: Scan neighbour verts not on shared edge.
-		/*int sharedA = tris[triIdx].vIndices[(oppEdge + 1) % 3];
-		int sharedB = tris[triIdx].vIndices[(oppEdge + 2) % 3];
-		int oppVert;
-		for (int v : tris[adjIdx].vIndices) {
-			if (v != sharedA && v != sharedB) {
-				oppVert = v;
-				break;
-			}
-		}
-
-		// Delauneyness check. If inCircle > 0, it's a violate, flip if not constrained.
-		int a = tris[triIdx].vIndices[0];
-		int b = tris[triIdx].vIndices[1];
-		int c = tris[triIdx].vIndices[2];
-
-		if (PointInCircle(points[a], points[b], points[c], points[oppVert]) > EPSILON && !tris[triIdx].isConstrained[oppEdge]) {
-			// Flip Quad: Delete shared edge, make two new tris: (A, sharedA, oppVert) + (C, oppVert, sharedB)
-			// Compute newTri1/2 indices, emplace_back CCW.
-			// Rewire *all* 4 adjs around quad (old neigh's other adjs -> new).
-			// Push new dirty edges (the flipped ones opp new diagonal).
-			// Mark old tri/neigh invalid (or swap contents + resize vector later).
-		}* /
-	}
-}*/
 
 bool IsPointOnSegment(const Vec2<long double>& A,	const Vec2<long double>& B,	const Vec2<long double>& P)
 {

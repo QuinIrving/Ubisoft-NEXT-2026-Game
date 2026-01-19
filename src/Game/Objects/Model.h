@@ -36,6 +36,7 @@ private:
 	Quaternion m_delta;
 	std::vector<Mesh> m_meshes;
 	std::shared_ptr<ModelEdge> m_edges; // Shared per same Model, only thing that changes is the mesh material, and the object specific model matrix.
+	// Based on what I read the way I am currently "sharing" is not actually going to share, as the map stores a non-pointer so everything else just creates a brand new shared_ptr, nothing is shared!
 	/*
 	* 
 	std::unordered_map<uint64_t, std::vector<uint32_t>> adjacencyTable; -> share between multiple meshes.

@@ -11,11 +11,7 @@ enum MovementState {
 
 
 namespace MovementSystem {
+	const float JUMP_IMPULSE = 48.f;
+
 	void HandlePlayerMovement(Player& p, Vec3<float> inputDir, float delta);
 }
-
-//class MovementHandler {
-//public:
-//
-//private:
-//};

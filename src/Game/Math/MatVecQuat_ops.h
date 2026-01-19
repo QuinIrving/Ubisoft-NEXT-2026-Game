@@ -155,3 +155,5 @@ inline Vec4<T>& Vec4<T>::operator*=(const Quaternion& q) {
 
 	return *this;
 }
+
+

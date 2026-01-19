@@ -6,7 +6,6 @@ class ProjectionVertex {
 public:
 	ProjectionVertex(Vec4<float> clipPos, Colour colour) : m_clipPosition(clipPos), m_colour(colour) {};
 
-	//Vec4<float> operator*(const Mat4<float>& rhs) const { return m_position * rhs; }
 
 	const Vec4<float>& GetClipPosition() const { return m_clipPosition; }
 	const Colour& GetColour() const { return m_colour; }

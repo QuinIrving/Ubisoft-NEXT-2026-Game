@@ -15,20 +15,17 @@ public:
 	void Scale(float x, float y, float z);
 	void Translate(float x, float y, float z);
 
-	//const ModelAttributes& GetModelAttributes();
 	Mat4<float> GetModelMatrix() const;
 	std::vector<uint32_t>& GetVertexIds();
 	std::vector<Vertex>& GetVertices();
 
 	Vec3<float> GetTranslation() { return m_position; }
-	//Vec3<float> GetRotation() { return m_rotation; }
 	Vec3<float> GetScale() { return m_scale; }
 	Vec3<float> GetLocalHalfExtent() { return Vec3<float>(m_width / 2.f, m_height / 2.f, 0.005f); }
 	Mat4<float> GetRotationMatrix() { return m_delta.GetRotationMatrix(); }
 	Colour GetColour() { return col; }
 
 	Material material;
-	//ModelAttributes m_attributes;
 
 	Mesh GetMesh();
 	Mesh GetMesh(std::vector<TextureLoader::UVTri> uvTriangles);
@@ -36,7 +33,6 @@ public:
 
 private:
 	Vec3<float> m_position{ 0., 0., 0. };
-	//Vec3<float> m_rotation{ 0., 0., 0. };
 	Vec3<float> m_scale{ .5, .5, .5 };
 	Quaternion m_delta;
 	QuadMesh m_mesh;

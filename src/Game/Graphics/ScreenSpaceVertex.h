@@ -7,8 +7,6 @@ class ScreenSpaceVertex {
 public:
 	ScreenSpaceVertex(Vec2<float> screenPos, float z, float w, Colour colour) : m_screenPosition(screenPos), z(z), w(w), m_colour({ colour.r, colour.g, colour.b }) {};
 
-	//Vec4<float> operator*(const Mat4<float>& rhs) const { return m_position * rhs; }
-
 	const Vec2<float>& GetScreenPosition() const { return m_screenPosition; }
 	float GetDepth() const { return z; }
 	float GetW() const { return w; }

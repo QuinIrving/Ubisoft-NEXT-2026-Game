@@ -64,18 +64,6 @@ namespace {
 // IN ATTRIBUTES I SHOULD PROBABLY ADD A FLAG FOR IF IT SHOULD BE WIREFRAME OR NOT, OR HAVE AN OVERRIDE FOR IT NOT SURE!
 constexpr bool wireframe = false;
 void RenderPipeline::Render(const std::vector<Vertex>& vertices, const Mat4<float>& modelMatrix, const Mat4<float>& ViewMatrix, const Colour& col) const {
-    // Pretend Camera and Lights [DOING]
-    //Mat4<float> cameraView = Mat4<float>::GetIdentity();
-
-    // Vertex -> MV applied to get View and World space coords new Vertex = VertexPrime
-    // VertexPrime -> turned into some form of Triangle = Triangle
-    // Triangle -> Tessellated, and displacement mapped to generate more triangles of Type Triangle
-    // VertexShading and Lighting applies, (not sure if this constitues any change, let's say not for now)
-    // Triangle has it's points with projection applied, we do some culling and clipping & finally perspective divide
-    // That perspective divided thing should have new vertices and new triangle type
-    // Draw triangle with new type TriNew;
-
-    // Need to also worry about moving light into either view or keep in world space. (may even have it's own model matrix to apply to itself)
 
     // ---- Object -> Model -> view transform Vertex Process ---- [DONE]
     std::vector<ViewVertex> viewVerts;

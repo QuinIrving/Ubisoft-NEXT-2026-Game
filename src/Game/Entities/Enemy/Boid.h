@@ -10,7 +10,6 @@
 class Boid {
 public:
 	// we want them able to know nearby neighbours, and move in that direction. Our rotation handles all of the movement, we want it kind of pointy to easily see the vertex
-	// it uses as it's "front", and for nice easy OBB.
 	Boid(Vec3<float> startPos={0, 0, 0});
 
 	void Rotate(float x, float y, float z);
@@ -50,6 +49,7 @@ private:
 	float m_turnFactor = 5.f;
 	float m_perceptionRadius = 12.f; // Angle with this should help for obstacle avoidance
 	float m_separationRadius = 12.f;
+
 	// Our mesh for this is simply a std::vector of pre-initialized Vertices. Might need to refactor for something cleaner for the pipeline.
 	std::vector<Vertex> m_vertices;
 	Vec3<float> m_acceleration = { 0.f, 0.f, 0.f };

@@ -43,7 +43,7 @@ void Camera::Translate(const Vec3<float>& v)
 
 Mat4<float> Camera::GetViewMatrix() const {
 	Vec3<float> right = Vec4<float>(1, 0, 0, 0) * m_rotation;
-	Vec3<float> up = Vec4<float>(0, -1, 0, 0) * m_rotation;
+	Vec3<float> up = Vec4<float>(0, -1, 0, 0) * m_rotation; // hacky solution for fixing my y-down issue.
 	Vec3<float> forward = Vec4<float>(0, 0, -1, 0) * m_rotation;
 
 	float rPos = right.DotProduct(m_position);
