@@ -29,10 +29,12 @@
 #include "Tessellation/TriangleNode.h"
 #include "Graphics/RenderPipeline.h"
 #include "Entities/Player/Player.h"
+#include "Entities/World.h"
+#include <Physics/Collisions/Collision.h>
 
 
 RenderPipeline& p = RenderPipeline::GetInstance();
-Player player;
+World world;
 //Pipeline& p = Pipeline::GetInstance();
 //TessellatedPipeline& p = TessellatedPipeline::GetInstance();
 
@@ -76,6 +78,8 @@ Vec2<float> diff;
 Vec2<int> windowSize;
 int frames = 0;
 
+constexpr float SLOW_TIME = 1.f;
+
 /*
 std::vector<Vertex> foxVerts;
 std::vector<uint32_t> foxIndices;
@@ -86,10 +90,7 @@ ModelAttributes ma;
 Quad q2 = Quad(1, 1, 2, Vec4<float>(1.f, 0.f, 0.f, 1.f));
 std::vector<Mesh> q2Meshes;
 ModelEdge q2Edges;*/
-Quad q1 = Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f));
-Quad q2 = q1;
-Quad q3 = q1;
-Quad q4 = q1;
+
 //std::vector<Mesh> q2Meshes;
 bool isEscapeDown = false; // need a whole handler for this of keeping track of already down keys.
 bool showCursor = false;
@@ -119,7 +120,13 @@ void Init()
 	App::GetMousePos(mX, mY);
 	mousePos = { WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f };
 	glutSetCursor(GLUT_CURSOR_NONE);
-	player = Player();
+	world.player = Player();
+
+	world.quads.insert(world.quads.end(), { Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f)), Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f)),
+		Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f)), Quad(1, 1, 100, Vec4<float>(1.f, 0.f, 0.f, 1.f)) });
+
+	world.quads.push_back(Quad(1, 1, 200, Vec4<float>(1.f, 0.f, 0.f, 1.f)));
+	world.quads.push_back(Quad(1, 10, 10, Vec4<float>(1.f, 0.f, 0.f, 1.f)));
 
 	/*
 	moveForward = true;
@@ -155,15 +162,24 @@ void Init()
 	*/
 	
 
-	q1.Translate(0, 0.f, 0);
-	q2.Translate(0, 0, -5.f);
-	q3.Translate(5.f, 0, -5.f);
-	q4.Translate(5.f, 0, 0);
+	world.quads[0].Translate(0, 0.f, 0);
+	world.quads[1].Translate(120.f, 0, 0.f);
+	world.quads[2].Translate(50.f, 0, -50.f);
+	world.quads[3].Translate(50.f, 40, 0);
+	world.quads[4].Translate(70.f, 0, 80.f);
+	world.quads[5].Translate(170.f, 25, 0.f);
+
 	//q1.Scale(50, 50, 0);
-	q1.Rotate(90, 0, 0);
-	q2.Rotate(90, 0, 0);
-	q3.Rotate(90, 0, 0);
-	q4.Rotate(90, 0, 0);
+	world.quads[0].Rotate(30, 0, 0);
+	world.quads[1].Rotate(30, 0, 0);
+	world.quads[2].Rotate(30, 0, 0);
+	world.quads[3].Rotate(90, 0, 0);
+
+	world.quads[4].Rotate(-30, 0, 0);
+	world.quads[5].Rotate(0, 90, 0);
+	world.quads[5].Rotate(240, 0, 0);
+
+	world.player.SetPosition({ -24, 45, 0 });
 	//q2Meshes.push_back(q2.GetMesh());
 	//q2Meshes[0].material.map_Kd = std::make_shared<Texture>(TextureLoader::textureMap["brickwall"]);
 
@@ -203,7 +219,9 @@ void Update(const float deltaTime)
 		windowChange = 1; // denotes that we just changed so skip a frame before going again
 	}
 
-	float deltaSeconds = deltaTime / 1000.f;
+	float deltaSeconds = (deltaTime / 1000.f) * SLOW_TIME;
+	
+	//world.quads[5].Rotate(10.f * deltaSeconds, 0, 0);
 	frames++;
 	
 	//------------------------------------------------------------------------
@@ -316,12 +334,12 @@ void Update(const float deltaTime)
 		}
 		snprintf(textBufferA, sizeof(textBufferA), "New Mouse: (%f, %f)", mX, mY);
 		
-		float degX = (diff.y / static_cast<float>(APP_INIT_WINDOW_HEIGHT)) * player.GetMouseSensitivty(); // Around x axis, we care about mouse Y
-		float degY = (-diff.x / static_cast<float>(APP_INIT_WINDOW_WIDTH)) * player.GetMouseSensitivty(); // Around y axis we care about mouse X
+		float degX = (-diff.y / static_cast<float>(APP_INIT_WINDOW_HEIGHT)) * world.player.GetMouseSensitivty(); // Around x axis, we care about mouse Y
+		float degY = (-diff.x / static_cast<float>(APP_INIT_WINDOW_WIDTH)) * world.player.GetMouseSensitivty(); // Around y axis we care about mouse X
 		glutWarpPointer(WINDOW_WIDTH / 2, (int)std::ceil(WINDOW_HEIGHT / 2));
 		snprintf(textBufferB, sizeof(textBufferB), "Warped Mouse: (%f, %f)", mousePos.x, mousePos.y);
 
-		player.RotateXY(degX, degY);
+		world.player.RotateXY(degX, degY);
 	}
 
 	int moveRight = 0;
@@ -345,28 +363,38 @@ void Update(const float deltaTime)
 		moveForward -= 1;
 	}
 
-	if (App::GetController().CheckButton(App::BTN_X, false) && player.GetMoveState() != MovementState::AIR) {
+	if (App::GetController().CheckButton(App::BTN_X, false) && world.player.GetMoveState() != MovementState::AIR) {
 		// add an impulse to the y velocity, and set player as in air.
-		player.UpdateVelocity(Vec3<float>(0.f, -16.f, 0.f));
-		player.TransitionMoveState(MovementState::AIR);
+		world.player.UpdateVelocity(Vec3<float>(0.f, 16.f, 0.f));
+		world.player.TransitionMoveState(MovementState::AIR);
 	}
-	else if (App::IsKeyPressed(App::KEY_SPACE) && player.GetMoveState() != MovementState::AIR) { // same for keyboard
-		player.UpdateVelocity(Vec3<float>(0.f, -16.f, 0.f));
-		player.TransitionMoveState(MovementState::AIR);
+	else if (App::IsKeyPressed(App::KEY_SPACE) && world.player.GetMoveState() != MovementState::AIR) { // same for keyboard
+		world.player.UpdateVelocity(Vec3<float>(0.f, 16.f, 0.f));
+		world.player.TransitionMoveState(MovementState::AIR);
 	}
 
 	float camRotY = 0, camRotX = 0; // around the axis
-	camRotY -= App::GetController().GetRightThumbStickX() * player.GetControllerSensitivty() * (deltaSeconds);
-	camRotX -= App::GetController().GetRightThumbStickY() * player.GetControllerSensitivty() * (deltaSeconds);
-	player.RotateXY(camRotX, camRotY);
+	camRotY -= App::GetController().GetRightThumbStickX() * world.player.GetControllerSensitivty() * (deltaSeconds);
+	camRotX += App::GetController().GetRightThumbStickY() * world.player.GetControllerSensitivty() * (deltaSeconds);
+	world.player.RotateXY(camRotX, camRotY);
 
-	MovementSystem::HandlePlayerMovement(player, Vec3<float>(moveRight, 0, moveForward), deltaSeconds);
+	MovementSystem::HandlePlayerMovement(world.player, Vec3<float>(moveRight, 0, moveForward), deltaSeconds);
 
-	if (player.GetPosition().y >= 0.f) {
-		player.SetYPosition(0.f);
-		player.ResetOffGroundTimer();
-		player.TransitionMoveState(MovementState::GROUND);
+	// collision detection section
+	Collision::ResolvePlayerCollision(world, deltaSeconds);
+
+	// update position.
+	world.player.UpdatePosition(world.player.GetVelocity() * deltaSeconds);
+
+	
+	if (world.player.GetPosition().y < -50.5f) {
+		world.player.SetVelocity({ 0, 0, 0 });
+		world.player.SetPosition({ -24, 45, 0 });
+		OutputDebugString("\n\nReset\n\n\n");
+		//world.player.ResetOffGroundTimer();
+		//world.player.TransitionMoveState(MovementState::GROUND);
 	}
+
 }
 
 //------------------------------------------------------------------------
@@ -375,10 +403,15 @@ void Update(const float deltaTime)
 //------------------------------------------------------------------------
 void Render()
 {
-	p.Render(q1.GetVertices(), q1.GetModelMatrix(), player.GetViewMatrix(), Colour(3 / 255.f, 219 / 255.f, 252 / 255.f, 1.f));
-	p.Render(q2.GetVertices(), q2.GetModelMatrix(), player.GetViewMatrix(), Colour(161 / 255.f, 57 / 255.f, 230 / 255.f, 1.f));
-	p.Render(q3.GetVertices(), q3.GetModelMatrix(), player.GetViewMatrix(), Colour(3 / 255.f, 219 / 255.f, 252 / 255.f, 1.f));
-	p.Render(q4.GetVertices(), q4.GetModelMatrix(), player.GetViewMatrix(), Colour(161 / 255.f, 57 / 255.f, 230 / 255.f, 1.f));
+	//world.render();
+	p.Render(world.quads[0].GetVertices(), world.quads[0].GetModelMatrix(), world.player.GetViewMatrix(), Colour(3 / 255.f, 219 / 255.f, 252 / 255.f, 1.f));
+	p.Render(world.quads[1].GetVertices(), world.quads[1].GetModelMatrix(), world.player.GetViewMatrix(), Colour(161 / 255.f, 57 / 255.f, 230 / 255.f, 1.f));
+	p.Render(world.quads[2].GetVertices(), world.quads[2].GetModelMatrix(), world.player.GetViewMatrix(), Colour(3 / 255.f, 219 / 255.f, 252 / 255.f, 1.f));
+	p.Render(world.quads[3].GetVertices(), world.quads[3].GetModelMatrix(), world.player.GetViewMatrix(), Colour(161 / 255.f, 57 / 255.f, 230 / 255.f, 1.f));
+	p.Render(world.quads[4].GetVertices(), world.quads[4].GetModelMatrix(), world.player.GetViewMatrix(), Colour(1.f, 57 / 255.f, 18 / 255.f, 1.f));
+	p.Render(world.quads[5].GetVertices(), world.quads[5].GetModelMatrix(), world.player.GetViewMatrix(), Colour(1.f, 1.f, 1.f, 1.f));
+	
+	
 	/* MAIN PIPELINE */
 	//p.Render(bunnyVerts, bunnyIndices, ma);
 	//p.Render(foxVerts, foxIndices, ma);
@@ -412,23 +445,23 @@ void Render()
 	*/
 
 	char textBuffer[64];
-	snprintf(textBuffer, sizeof(textBuffer), "Pos: (%f, %f, %f)", player.GetPosition().x, player.GetPosition().y, player.GetPosition().z);
+	snprintf(textBuffer, sizeof(textBuffer), "Pos: (%f, %f, %f)", world.player.GetPosition().x, world.player.GetPosition().y, world.player.GetPosition().z);
 	App::Print(10, APP_VIRTUAL_HEIGHT - 20, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
 
-	snprintf(textBuffer, sizeof(textBuffer), "Vel: (%f, %f, %f)", player.GetVelocity().x, player.GetVelocity().y, player.GetVelocity().z);
+	snprintf(textBuffer, sizeof(textBuffer), "Vel: (%f, %f, %f)", world.player.GetVelocity().x, world.player.GetVelocity().y, world.player.GetVelocity().z);
 	App::Print(10, APP_VIRTUAL_HEIGHT - 40, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
 
 	App::Print(10, APP_VIRTUAL_HEIGHT - 120, textBufferA, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
 	App::Print(10, APP_VIRTUAL_HEIGHT - 140, textBufferB, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
 
 	std::string stateText = "GROUND";
-	if (player.GetMoveState() == MovementState::AIR) {
+	if (world.player.GetMoveState() == MovementState::AIR) {
 		stateText = "AIR";
-	} else if (player.GetMoveState() == MovementState::GRAPPLEHOOK) {
+	} else if (world.player.GetMoveState() == MovementState::GRAPPLEHOOK) {
 		stateText = "GRAPPLEHOOK";
 	}
 
-	snprintf(textBuffer, sizeof(textBuffer), "State: %s", stateText);
+	snprintf(textBuffer, sizeof(textBuffer), "State: %s", stateText.c_str());
 	App::Print(10, APP_VIRTUAL_HEIGHT - 60, textBuffer, 0.2f, 1.0f, 0.2f, GLUT_BITMAP_HELVETICA_10);
 
 	// Camera will use a fixed sensitivity (that in settings can be changed), while mouse will use raw input given + sensitivity for our camera input.

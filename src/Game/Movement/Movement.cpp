@@ -10,30 +10,36 @@ namespace {
 	const float GRAVITY = 20.0f;
 	const float JUMP_IMPULSE = 8.f;
 	const float MAX_OFF_PLATFORM_ALLOWED_TIME = 0.15f; // in seconds
+	const float STOP_SPEED = 2.4f; // Ratio from CS: (75/250) * our ground speed of 8 instead.
 }
 
 namespace GroundSettings {
-	const float ACCELERATION = 7.f;
+	const float ACCELERATION = 5.5f;
 	const float SPEED = 8.f;
-	const float FRICTION = 8.f;
+	const float FRICTION = 5.2f;
 }
 
 namespace AirSettings {
-	const float ACCELERATION = 100.f;
-	const float SPEED = 1.f;
+	//const float ACCELERATION = 20.f;
+	const float ACCELERATION = 50.f;
+	const float SPEED = GroundSettings::SPEED;
+	const float MAX_SURF_SPEED = 45.f;
+	//const float SPEED = 5.f;
 	//const float SPEED = 0.1f;
 	//const float DRAG = 0.1f;
-	const float DRAG = 0.f;
+	const float DRAG = 0.1f;
 
 }
 
-namespace {
+namespace Movement {
 	void Move(Player& p, Vec3<float> wishDir, float accel, float maxSpeed, float friction, float delta) {
 		
 		if (friction > 0) {
 			float currSpeed = p.GetVelocity().GetMagnitude();
 			if (currSpeed != 0) {
-				float drop = currSpeed * friction * delta;
+				float control = (currSpeed < STOP_SPEED) ? STOP_SPEED : currSpeed;
+				//float drop = currSpeed * friction * delta;
+				float drop = control * friction * delta;
 				float newSpeed = std::max<float>(0.f, currSpeed - drop);
 				p.SetVelocity(p.GetVelocity() * (newSpeed / currSpeed));
 			}
@@ -65,46 +71,6 @@ namespace {
 	}
 
 	void HandleAirMovement(Player& p, Vec3<float> wishDir, float delta) {
-		//Vec3<float> currentVel = p.GetVelocity();
-		//currentVel.y = 0; // Only care about horizontal speed for strafing
-
-		//float speed = currentVel.GetMagnitude();
-
-		//if (speed == 0.f) {
-		//	return;
-		//}
-
-		//// 1. Calculate the angle between where we are going and where we want to go
-		//// Dot product of normalized vectors gives the Cosine of the angle
-		//float dot = currentVel.GetNormalized().DotProduct(wishDir);
-		//float angle = acosf(std::clamp(dot, -1.0f, 1.0f));
-
-		//// 2. Sample our "Curve"
-		//// We want a peak multiplier when the angle is around 90 degrees (PI/2)
-		//float strafeMultiplier = 1.0f;
-
-		//// Example "Curve" Logic: 
-		//// If angle is near 90 deg (PI/2), boost the acceleration significantly
-		//float targetAngle = PI / 2.0f;
-		//float angleDiff = fabsf(angle - targetAngle);
-
-		//if (angle < PI / 2.0f) {
-		//	// Boost speed when "Slightly off-center" (The Air Strafe Zone)
-		//	// This is where you gain momentum
-		//	strafeMultiplier = 1.0f + (expf(-angleDiff * 2.0f) * 5.0f);
-		//}
-		//else {
-		//	// Penalize speed if trying to turn too sharply (> 90 degrees)
-		//	strafeMultiplier = 0.2f;
-		//}
-
-		//// 3. Apply the modified acceleration
-		//float accel = AirSettings::ACCELERATION * strafeMultiplier;
-
-		//float airAccel = 100.f;
-		//float airCap = 1.f;
-
-		//Move(p, wishDir, airAccel, airCap, AirSettings::DRAG, delta);
 		Move(p, wishDir, AirSettings::ACCELERATION, AirSettings::SPEED, AirSettings::DRAG, delta);
 	}
 }
@@ -119,18 +85,31 @@ void MovementSystem::HandlePlayerMovement(Player& p, Vec3<float> inputDir, float
 
 	switch (p.GetMoveState()) {
 	case MovementState::GROUND:
-		HandleGroundMovement(p, wishDir, delta);
+		Movement::HandleGroundMovement(p, wishDir, delta);
 		break;
 	case MovementState::AIR:
-		HandleAirMovement(p, wishDir, delta);
-		p.UpdateVelocity(Vec3<float>(0, GRAVITY * delta, 0));
+		Movement::HandleAirMovement(p, wishDir, delta);
 		break;
 	case MovementState::GRAPPLEHOOK:
 		break;
 	}
 
-	p.UpdateOffGroundTimer(delta);
+	
+	// Clamp our horizontal speed to our max air speed to make BHOP and SURF still feel nice, without making it go with crazy gains
+	if (p.GetMoveState() == MovementState::AIR) {
+		Vec3<float> vel = p.GetVelocity();
+		float horzMag = Vec2<float>(vel.x, vel.z).GetMagnitude();
 
+		if (horzMag > AirSettings::MAX_SURF_SPEED) {
+			float scale = AirSettings::MAX_SURF_SPEED / horzMag;
+			vel.x *= scale;
+			vel.z *= scale;
+			p.SetVelocity(vel);
+		}
+	}
+
+	p.UpdateOffGroundTimer(delta);
+	p.UpdateVelocity(Vec3<float>(0, -GRAVITY * delta, 0));
 	// collision should continue to update this back to 0, and set position, and movestate to ground
 
 	//update / transition right after(may need to swap these if it feels off)
@@ -140,6 +119,8 @@ void MovementSystem::HandlePlayerMovement(Player& p, Vec3<float> inputDir, float
 		p.ResetOffGroundTimer();
 	}
 
-	p.UpdatePosition(p.GetVelocity() * delta);
+	// This is where our collision detection should be, could hand it off, to properly do the real position update.
+
+	//p.UpdatePosition(p.GetVelocity() * delta);
 }
 

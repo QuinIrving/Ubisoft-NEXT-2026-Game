@@ -1,6 +1,7 @@
 #pragma once
 #include <Graphics/Camera.h>
 #include "Movement/Movement.h"
+#include "Physics/Collisions/Colliders.h"
 
 class Player {
 public:
@@ -36,9 +37,13 @@ public:
 	Vec3<float> GetForwardDir();
 	Vec3<float> GetRightDir();
 
+	CapsuleCollider GetCollider() const { return capsule; }
+
 private:
 	Vec3<float> m_position;
 	Vec3<float> m_velocity;
+
+	CapsuleCollider capsule;
 
 	float m_eyeHeight = 1.8f;
 	MovementState m_moveState = MovementState::GROUND;
@@ -47,3 +52,13 @@ private:
 	Camera c;
 
 };
+
+/*
+namespace Player {
+	void Create(ECS::World& w);
+	Mat4<float> GetViewMatrix(ECS::World& w);
+
+	// Need a way to get the looking direction/orientation to do my proper computations in movement updates.
+	Vec3<float> GetForwardDir(ECS::World& w);
+	Vec3<float> GetRightDir(ECS::World& w);
+}*/

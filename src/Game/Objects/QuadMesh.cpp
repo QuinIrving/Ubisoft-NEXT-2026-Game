@@ -6,8 +6,8 @@ QuadMesh::QuadMesh(float width, float height, Vec4<float> colour) {
 	m_vertices.reserve(6);
 	//m_vertexIds.reserve(6);
 
-	float wOver2 = (width / 2.f) * Pipeline::SCENE_SCALE;
-	float hOver2 = (height / 2.f) * Pipeline::SCENE_SCALE;
+	float wOver2 = (width / 2.f);
+	float hOver2 = (height / 2.f);
 
 
 	m_vertices.push_back(Vertex({ -wOver2, hOver2, 0 }, colour, { 0, 0, 1 }, { 0, 1 }, {}, 0.f, 1));

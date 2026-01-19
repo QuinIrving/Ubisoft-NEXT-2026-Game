@@ -302,7 +302,7 @@ Model ObjectLoader::Load(const std::string& path) {
 				throw std::runtime_error("The obj file being read contains vertices that aren't just 3 pieces of data: " + path);
 			}
 			
-			objVertices.push_back({ std::stof(stringVerts[0]) * Pipeline::SCENE_SCALE, std::stof(stringVerts[1]) * Pipeline::SCENE_SCALE, std::stof(stringVerts[2]) * Pipeline::SCENE_SCALE });
+			objVertices.push_back({ std::stof(stringVerts[0]), std::stof(stringVerts[1]), std::stof(stringVerts[2]) });
 		}
 		else if (prefix == "vt") {
 			std::vector<std::string> stringUVs = extractData(data, delimiter);

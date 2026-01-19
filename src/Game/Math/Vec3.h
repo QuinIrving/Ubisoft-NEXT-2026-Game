@@ -48,6 +48,9 @@ public:
 	Vec3<T> operator/(const Vec3<T>& rhs) const;
 	Vec3<T>& operator/=(const Vec3<T>& rhs);
 
+	T& operator[](int col);
+	const T& operator[](int col) const;
+
 	// Matrix multiplication
 	Vec4<T> operator*(const Mat4<T>& rhs) const;
 	Vec3<T>& operator*=(const Mat4<T>& rhs);
@@ -209,6 +212,24 @@ Vec3<T>& Vec3<T>::operator/=(const Vec3<T>& rhs) {
 	z /= rhs.z;
 
 	return *this;
+}
+
+template <typename T>
+T& Vec3<T>::operator[](int col) {
+	if (col < 0 || col >= 3) {
+		throw std::out_of_range("Attempted to access a Vec3 col outside of range");
+	}
+
+	return (&x)[col];
+}
+
+template <typename T>
+const T& Vec3<T>::operator[](int col) const {
+	if (col < 0 || col >= 3) {
+		throw std::out_of_range("Attempted to access a Vec3 col outside of range");
+	}
+
+	return (&x)[col];
 }
 
 template <typename T>

@@ -4,6 +4,8 @@
 Quad::Quad(float width, float height, float size, Vec4<float> colour) {
 	Scale(size, size, size);
 	m_mesh = QuadMesh(width, height, colour);
+	m_width = width;
+	m_height = height;
 }
 
 void Quad::Rotate(float x, float y, float z) {
@@ -12,7 +14,7 @@ void Quad::Rotate(float x, float y, float z) {
 	//m_rotation.z = std::fmodf(m_rotation.z + z, 360.f);
 	Quaternion deltaRotation = Quaternion(x, y, z);
 
-	m_delta *= deltaRotation;
+	m_delta = deltaRotation * m_delta;
 	m_delta.Normalize();
 }
 

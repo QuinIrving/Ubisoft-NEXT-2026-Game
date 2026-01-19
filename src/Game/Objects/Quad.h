@@ -23,6 +23,8 @@ public:
 	Vec3<float> GetTranslation() { return m_position; }
 	//Vec3<float> GetRotation() { return m_rotation; }
 	Vec3<float> GetScale() { return m_scale; }
+	Vec3<float> GetLocalHalfExtent() { return Vec3<float>(m_width / 2.f, m_height / 2.f, 0.005f); }
+	Mat4<float> GetRotationMatrix() { return m_delta.GetRotationMatrix(); }
 
 	Material material;
 	//ModelAttributes m_attributes;
@@ -37,4 +39,6 @@ private:
 	Vec3<float> m_scale{ .5, .5, .5 };
 	Quaternion m_delta;
 	QuadMesh m_mesh;
+	float m_width;
+	float m_height;
 };
