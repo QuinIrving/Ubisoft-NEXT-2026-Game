@@ -33,6 +33,7 @@ public:
 	void RotateTowards(Vec3<float> targetDir, float delta);
 
 	Vec3<float> SteerTowards(Vec3<float> desiredDir);
+	inline void UpdateMaxSpeed(float delta) { m_maxSpeed += (delta); }
 
 private:
 	Vec3<float> m_position = { 0, 0, 0 };

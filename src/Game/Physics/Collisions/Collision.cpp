@@ -341,6 +341,10 @@ namespace Collision {
                 p.SetVelocity(slideVel + bridgeVel);
             }
         }
+        else if (c.type == EntityType::BOID) {
+            // game over.
+            w.isPlayerDead = true;
+        }
 
         // can handle different types in here.
     }
@@ -525,6 +529,48 @@ namespace Collision {
                         collide.index = idx;
                         collide.collisionNormal = (i.worldNormal);
                         collide.kinematicSurfaceVel = bVel;
+                    }
+                }
+            }
+        }
+
+        Vec3<float> boidSize = { 1.f, 2.f, 1.f };
+        Vec3<float> boidHalf = boidSize * 0.5f;
+        for (int idx = 0; idx < w.boidSwarm.size(); ++idx) {
+            Swarm& s = w.boidSwarm[idx];
+
+            for (int bIdx = 0; bIdx < s.GetBoids().size(); ++bIdx) {
+                Boid& b = s.GetBoids()[bIdx];
+                Vec3<float> boidPos = b.GetPosition();
+
+                OBB boidOBB(
+                    boidPos,
+                    boidHalf,
+                    b.GetRotationMatrix()
+                );
+
+                Intersection i;
+                Vec3<float> relativeVel = (p.GetVelocity()); // we already move boids when updating ahead of player handling, not the best solution, but they are grouped so we'll be nice to the player
+                Vec3<float> rayOrigin = pPos;
+
+                // Swept direction = velocity (units / second)
+                Vec3<float> rayDir = p.GetVelocity();
+
+                bool hit = SweptRayIntersectOBB(
+                    rayOrigin - boidOBB.center, // transform into OBB space
+                    rayDir,
+                    boidOBB,
+                    delta,                      // time window
+                    i
+                );
+                if (hit) {
+                    collide.hasCollision = true;
+
+                    if (i.time < collide.time) {
+                        collide.time = i.time;
+                        collide.type = EntityType::BOID;
+                        collide.index = bIdx;
+                        collide.collisionNormal = i.worldNormal;
                     }
                 }
             }

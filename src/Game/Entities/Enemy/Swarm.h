@@ -4,11 +4,13 @@
 
 class Swarm {
 public:
-	Swarm(unsigned int numBoids = 1) {
+	Swarm(Vec3<float> startingPos, unsigned int numBoids = 1, Colour c = {1.f, 1.f, 1.f, 1.f}) : col(c) {
 		for (int i = 0; i < numBoids; ++i) {
-			m_boids.push_back(Boid());
+			m_boids.push_back(Boid(startingPos));
 		}
 	}
+
+	void IncreaseBallSpeed(float inc) { m_maxSpeed += inc; maxAccel += inc; }
 
 	void Update(Vec3<float> playerPos, float delta) {
 		// do our own update to our acceleration (new based on player dir), acceleration could potentially be uniform, instead changing our velocity based on a fixed acceleration and the dir.
@@ -21,7 +23,7 @@ public:
 			Vec3<float> desiredVel = toPlayer.GetNormalized() * m_maxSpeed;
 			Vec3<float> steer = desiredVel - m_velocity;
 
-			float maxAccel = 100.f;
+			
 			if (steer.GetMagnitudeSquared() > maxAccel * maxAccel) {
 				steer = steer.GetNormalized() * maxAccel;
 			}
@@ -47,6 +49,8 @@ public:
 	}
 
 	std::vector<Boid>& GetBoids() { return m_boids; }
+	Colour GetColour() { return col; }
+	
 
 private:
 	Vec3<float> m_ballPos; // should accelerate towards the player.
@@ -55,4 +59,7 @@ private:
 
 	std::vector<Boid> m_boids;
 	float m_maxSpeed = 200.f;
+	float maxAccel = 100.f;
+
+	Colour col;
 };

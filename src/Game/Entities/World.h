@@ -18,4 +18,5 @@ struct World {
 	std::vector<Boid> boids;
 	// bullets that can collide
 
+	bool isPlayerDead = false;
 };

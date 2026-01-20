@@ -7,14 +7,14 @@
 namespace {
 	float cohesionStrength = 8000.f;
 
-	float separationRadius = 1.5f;
+	float separationRadius = 1.f;
 	float separationStrength = 1.5f;
 
 	float orbitStrength = 0.2f;
 
 	float wanderStrength = 0.1f;
 
-	float ballRadius = 1.f;
+	float ballRadius = 0.1f;
 }
 
 void Boid::SwarmUpdate(const Vec3<float>& ballPos, std::vector<Boid>& boids, float delta) {
