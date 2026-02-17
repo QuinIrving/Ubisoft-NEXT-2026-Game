@@ -1,4 +1,5 @@
-#Ubi Contest API for Mac & Windows
+
+# Ubi Contest API for Mac \& Windows
 
 ## Dependencies
 
