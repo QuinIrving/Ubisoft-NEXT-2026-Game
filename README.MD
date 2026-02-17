@@ -4,7 +4,9 @@
 ## Overview
 
 **Living Cube** is a high speed survival platformer submitted for the Ubisoft NEXT 2026 Programming Challenge.
+
 Set entirely within the bounds of a single containment cube, the objective is to survive as long as possible against swarms of seeking entities. The project was built using a custom C++ 3D engine that handles the entire transformation pipeline, passing only final interpolated vertex data to the provided API's primitive triangle drawer.
+
 The game combines Quake-style movement mechanics (Bunny Hopping, Airstrafing, Surfing) with procedural platform generation, requiring the player to maintain momentum to outrun intelligent Boid swarms.
 
 
