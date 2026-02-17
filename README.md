@@ -10,7 +10,7 @@ Set entirely within the bounds of a single containment cube, the objective is to
 The game combines Quake-style movement mechanics (Bunny Hopping, Airstrafing, Surfing) with procedural platform generation, requiring the player to maintain momentum to outrun targeted Boid swarms.
 
 ## Game Demo:
-
+https://github.com/user-attachments/assets/9e65d670-e035-4710-a6cc-49cb08af0c7a
 
 ## Core Systems
 ### 1. Advanced Movement Physics
