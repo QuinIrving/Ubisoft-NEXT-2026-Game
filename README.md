@@ -47,7 +47,7 @@ Enemies utilize a modified Reynolds' Boids algorithm. They do not pathfind, but 
 
 ## Architecture
 
-The provided API for this challenge was limited to drawing colored triangles. I implemented a complete graphics pipeline to bridge the gap:
+The provided API for this challenge was limited to drawing coloured triangles. I implemented a complete graphics pipeline to bridge the gap:
 
     Scene Graph: Manages World-Space transformations for the player, platforms, and boids.
 
@@ -59,7 +59,7 @@ The provided API for this challenge was limited to drawing colored triangles. I 
 
     Rasterization Prep: Sends processed vertices with interpolated colours to the API.
 
-    Note: The visual style (Solid Colors, No Textures) is a deliberate aesthetic choice, mimicking early 3D debug views to focus purely on gameplay fluidity and geometric clarity.
+    Note: The visual style (Solid Colours, No Textures) is a deliberate aesthetic choice, mimicking early 3D debug views to focus purely on gameplay fluidity and geometric clarity.
 
 ## Controls
 
